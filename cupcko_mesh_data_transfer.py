@@ -179,12 +179,12 @@ class MeshData:
         if activate:
             sk.value=1
 
-    def generate_bmesh(self,defoemed=True,world_space=True):
+    def generate_bmesh(self,deformed=True,world_space=True):
         '''获取物体的bmesh
         如果采集修改器,返回应用修改器后的bmesh'''
         bm=bmesh.new()
         #读取初始化状态
-        if defoemed:
+        if deformed:
             depsgraph=bpy.context.evaluated_depsgraph_get()
         # 更新依赖图
             obj_eval=self.obj.evaluated_get(depsgraph)
@@ -196,6 +196,7 @@ class MeshData:
             mesh=self.obj.to_mesh()
             bm.from_mesh(mesh)
         if world_space:
+            print(world_space)
             bm.transform(self.obj.matrix_world)
         bm.verts.ensure_lookup_table()
         return bm
@@ -277,7 +278,7 @@ class MeshData:
     def get_verts_position(self):
         '''获取模型顶点坐标,返回坐标矩阵'''
         if self.deformed:
-            temp_bm=self.generate_bmesh(deform=self.deformed)
+            temp_bm=self.generate_bmesh(deformed=self.deformed,world_space=self.world_space)
             temp_mesh=bpy.data.meshes.new('temp_mesh')
             temp_bm.to_mesh(temp_mesh)
             verts=temp_mesh.vertices
@@ -304,10 +305,11 @@ class MeshDataTransfer:
         self.search_method=search_method  
         self.world_space=world_space 
         self.uv_space=uv_space 
-        self.source=MeshData(source,uv_space=uv_space)
+        self.source=MeshData(source,uv_space=uv_space,deformed=deformed_source,world_space=world_space)
         self.source.get_mesh_data()
-        self.thisobj=MeshData(thisobj,uv_space=uv_space)
+        self.thisobj=MeshData(thisobj,uv_space=uv_space,world_space=world_space)
         self.thisobj.get_mesh_data()
+        print('MeshDataTransfer self.world_space',self.world_space)
         self.vertex_group=vertex_group
         self.invert_vertex_group=invert_vertex_group
 
