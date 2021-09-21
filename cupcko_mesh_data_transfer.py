@@ -185,7 +185,7 @@ class MeshData:
         bm=bmesh.new()
         #读取初始化状态
         if defoemed:
-            depsgraph=bpy.context.evaluated_depsgragh_get()
+            depsgraph=bpy.context.evaluated_depsgraph_get()
         # 更新依赖图
             obj_eval=self.obj.evaluated_get(depsgraph)
             mesh=obj_eval.to_mesh()

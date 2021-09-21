@@ -15,51 +15,60 @@ class Create_flat_mesh(bpy.types.Operator):
         return context.active_object and context.active_object.type == 'MESH' and len(context.active_object.data.uv_layers) > 0 and bpy.context.mode=="OBJECT"
     def execute(self,context):
         #obj=context.active_object
-        me=bpy.context.object
-        bm=bmesh.new()
-        bm.from_mesh(me.data)
-        # active_uv=bm.loops.layers.uv.active 
-        try:
-            print("try")
-            shapekey=me.data.shape_keys.key_blocks.get("uv_flat")
-            if shapekey:
-                print("uv flat key")  
-                if shapekey.value==1:
-
-                    shapekey.value = 0
-                else:
-                    shapekey.value=1
-            #print("no uv flat key in pannel")
-
-            if not shapekey:
-                create_flat_mesh(bm)
-
-                bm.to_mesh(me.data)
-                shapekey=me.data.shape_keys.key_blocks.get("uv_flat")
-                shapekey.value = 1 
-                print("uv flat key,try to create")
-                
-                    
-        except:
-            #pass
-            a=time.time()           
+      
         
-           
-            create_flat_mesh(bm)
+        # active_uv=bm.loops.layers.uv.active 
+        if len(bpy.context.selected_objects)>=1:
+                for obj in bpy.context.selected_objects:
+                    
+                    if obj.type=='MESH':
+                        me=obj
+                        bm=bmesh.new()
+                        bm.from_mesh(me.data)
+                        try:
+                            print("try")
+                            shapekey=me.data.shape_keys.key_blocks.get("uv_flat")
+                            if shapekey:
+                                print("uv flat key")  
+                                if shapekey.value==1:
 
-            bm.to_mesh(me.data)
-            print((time.time()-a),'s') 
-            shapekey=me.data.shape_keys.key_blocks.get("uv_flat")
-            shapekey.value = 1
-            #me=bpy.context.object
-            #bm=bmesh.new()
-            #bm.from_mesh(me.data) 
-            #dupulicate_mesh_apply_key() 
-        bm.free()   
+                                    shapekey.value = 0
+                                else:
+                                    shapekey.value=1
+                            #print("no uv flat key in pannel")
+
+                            if not shapekey:
+                                
+                                create_flat_mesh(bm,obj)
+
+                                bm.to_mesh(me.data)
+                                
+                                shapekey=me.data.shape_keys.key_blocks.get("uv_flat")
+                                shapekey.value = 1 
+                                print("uv flat key,try to create")
+                                
+                                    
+                        except:
+                            #pass
+                            a=time.time()           
+                            
+
+                            create_flat_mesh(bm,obj)
+
+                            bm.to_mesh(me.data)
+                            bm.free()
+                            print((time.time()-a),'s') 
+                            shapekey=me.data.shape_keys.key_blocks.get("uv_flat")
+                            shapekey.value = 1
+                            #me=bpy.context.object
+                            #bm=bmesh.new()
+                            #bm.from_mesh(me.data) 
+                            #dupulicate_mesh_apply_key() 
+                        bm.free()  
         return {"FINISHED"}          
-def create_flat_mesh(bm):
+def create_flat_mesh(bm,obj):
     new_flatten_uv=bm.verts.layers.shape.get("uv_flat")
-    me=bpy.context.object
+    me=obj
     if not me.data.shape_keys:
         print("no shape_key")
         me.shape_key_add(name="Basis") 
@@ -97,54 +106,43 @@ class Dupulicate_mesh_aply_key(bpy.types.Operator):
     bl_options = {'REGISTER','UNDO'}
     @classmethod
     def poll(cls, context):
-        return context.active_object and context.active_object.type == 'MESH' and context.active_object.data.shape_keys and bpy.context.mode=="OBJECT"
+        return context.active_object and context.active_object.type == 'MESH' and context.active_object.data.shape_keys and bpy.context.mode=="OBJECT" \
+            and bpy.context.object.hide==0
     def execute(self,context):
-        #obj=context.active_object
-        me=bpy.context.object
-      #  bm=bmesh.new()
-      #  bm.from_mesh(me.data) 
-        dupulicate_mesh_apply_key()
+        a=bpy.context.selected_objects
+        if len(a)>=1:
+            
+            for obj in a:
+                if obj.type=='MESH':
+                    dupulicate_mesh_apply_key(obj)
         return {"FINISHED"}  
-def dupulicate_mesh_apply_key():
-    name=bpy.context.active_object.name
-    #如果是已经复制过后的对象,就不再重复复制
-    if ".00" not in name:
-        bpy.ops.object.duplicate_move(OBJECT_OT_duplicate={"linked":False, "mode":'TRANSLATION'}, TRANSFORM_OT_translate={"value":(0, 0, 0), "orient_type":'GLOBAL', "orient_matrix":((1, 0, 0), (0, 1, 0), (0, 0, 1)), "orient_matrix_type":'GLOBAL', "constraint_axis":(False, False, False), "mirror":True, "use_proportional_edit":False, "proportional_edit_falloff":'SMOOTH', "proportional_size":1, "use_proportional_connected":False, "use_proportional_projected":False, "snap":False, "snap_target":'CLOSEST', "snap_point":(0, 0, 0), "snap_align":False, "snap_normal":(0, 0, 0), "gpencil_strokes":False, "cursor_transform":False, "texture_space":False, "remove_on_cancel":False, "release_confirm":False, "use_accurate":False, "use_automerge_and_split":False})
-        bpy.data.objects[name].hide=True
-        me=bpy.context.object
-        shapekey=me.data.shape_keys.key_blocks.get("uv_flat")
-    #将平面uv移到最顶上,保证应用的是它
+def dupulicate_mesh_apply_key(obj):
+    if obj.data.shape_keys.key_blocks['uv_flat']:
+        set_active_object(obj.name)
+        bpy.ops.object.duplicate(linked=False, mode='TRANSLATION')
+        temp_obj=bpy.context.object
+        shapekey=temp_obj.data.shape_keys.key_blocks.get("uv_flat")
+        #将平面uv移到最顶上,保证应用的是它
         shapekey.value = 1
-        index=me.data.shape_keys.key_blocks[:].index(shapekey)
-        bpy.context.object.active_shape_key_index = index
+        index=temp_obj.data.shape_keys.key_blocks[:].index(shapekey)
+        temp_obj.active_shape_key_index = index
         print("key index=",index)
         if index!=1:    
             bpy.ops.object.shape_key_move(type='TOP')
-        Basis=me.data.shape_keys.key_blocks.get("Basis")
-        me.shape_key_remove(Basis)
+        Basis=temp_obj.data.shape_keys.key_blocks.get("Basis")
+        temp_obj.shape_key_remove(Basis)
         bpy.ops.object.shape_key_remove(all=True)
-    
-    if ".00" in name:
-        me=bpy.context.object
-        if me.data.shape_keys:
-            shapekey=me.data.shape_keys.key_blocks.get("uv_flat")
-            if shapekey:
-                shapekey.value = 1
-            Basis=me.data.shape_keys.key_blocks.get("Basis")
-            index=me.data.shape_keys.key_blocks[:].index(shapekey)
-            bpy.context.object.active_shape_key_index = index
-            print("key index2=",index)
-            if index!=1:  
-                bpy.ops.object.shape_key_move(type='TOP')
-            me.shape_key_remove(Basis)
-            
-            try:
 
-                bpy.ops.object.shape_key_remove(all=True)
-            except:
-                pass    
-        else:
-            print("do not click twice")
+        temp_obj.name='{}_001'.format(obj.name)
+        temp_obj.data.name='{}_001'.format(obj.name)
+        bpy.data.objects[obj.name].hide_set(1)
+
+
+def set_active_object(object_name):
+    bpy.ops.object.select_all(action='DESELECT')
+
+    bpy.context.view_layer.objects.active = bpy.data.objects[object_name]
+    bpy.data.objects[object_name].select_set(state=True)    
 def test():
     me=bpy.context.object
     bm=bmesh.new()
