@@ -136,6 +136,8 @@ class Cupcko_Panel(bpy.types.Panel):
         vertex_groups=layout.row(align=True)
         vertex_groups.prop_search(obj_prop,"vertex_group_filter",bpy.context.active_object,"vertex_groups")
         vertex_groups.prop(obj_prop,'invert_vertex_group_filter',text='',toggle=True,icon='ARROW_LEFTRIGHT')
+        modifi=layout.row()
+        modifi.prop(obj_prop,'transfer_modified_source',text='采样形变')
         search=layout.row(align=True)
         search.prop(obj_prop, 'search_method', expand=True, text="Search method")
         transferbox=layout.row()
@@ -204,6 +206,7 @@ class Meshdata_Settings(bpy.types.PropertyGroup):
                                                 description="做成形态键")
     vertex_group_filter:bpy.props.StringProperty(name="Vertex Group",description="仅传递顶点组中的顶点")
     invert_vertex_group_filter:bpy.props.BoolProperty(name="Invert vertex group", description="反转顶点组")
+    transfer_modified_source : bpy.props.BoolProperty ()
 class Cupcko_rotate_center_switch(bpy.types.Operator):
     bl_idname = "cup.depth_on"
     bl_label = "鼠标深度"

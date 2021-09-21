@@ -300,7 +300,7 @@ class MeshDataTransfer:
                 topolpgy=False,vertex_group=None,invert_vertex_group=False,
                 exclude_locked_groups=False,exclude_muted_shapekeys=False,
                 snap_to_closest=False,tranfer_divers=False):
-        
+        self.deformed_source = deformed_source
         self.search_method=search_method  
         self.world_space=world_space 
         self.uv_space=uv_space 

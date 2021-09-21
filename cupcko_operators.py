@@ -26,9 +26,10 @@ class TransferShapeData(bpy.types.Operator):
         mask_vertex_group = a.vertex_group_filter
         invert_mask = a.invert_vertex_group_filter
         search_method=a.search_method
-        
+        deformed_source = a.transfer_modified_source
         transfer_data=MeshDataTransfer(thisobj=context.active_object,source=source,uv_space=uv_space,
-                                        search_method=search_method,vertex_group=mask_vertex_group,invert_vertex_group=invert_mask)
+                                        search_method=search_method,vertex_group=mask_vertex_group,invert_vertex_group=invert_mask,
+                                        deformed_source=deformed_source)
      #   transfer_data.source.hitfaces_tri() 
       #  transfer_data.thisobj.hitfaces_tri()                               
         transferred=transfer_data.transfer_vertex_position(as_shape_key=as_shape_key)
