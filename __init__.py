@@ -10,7 +10,7 @@ import sys
 import os
 #from .cupcko_operators import *
 from . import flatten_uv
-from .flatten_uv import set_active_object
+#from .flatten_uv import set_active_object
 from .cupcko_mesh_data_transfer import *
 if sys.platform == 'win32':os.system('chcp 65001')
 from bpy.types import AddonPreferences as AP
@@ -464,9 +464,9 @@ def _edit_custom_shape():
     bpy.ops.mesh.select_all(action='SELECT')
 
     
-# def set_active_object(object_name):
-#      bpy.context.view_layer.objects.active = bpy.data.objects[object_name]
-#      bpy.data.objects[object_name].select_set(state=True)    
+def set_active_object(object_name):
+     bpy.context.view_layer.objects.active = bpy.data.objects[object_name]
+     bpy.data.objects[object_name].select_set(state=True)    
 def hide_object(obj_to_set):
     obj_to_set.hide_set(True)
     obj_to_set.hide_viewport = True    
