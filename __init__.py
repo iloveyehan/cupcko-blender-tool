@@ -18,6 +18,7 @@ import importlib
 importlib.reload(flatten_uv)
 importlib.reload(cupcko_mesh_data_transfer)
 importlib.reload(cupcko_operators)
+
 bl_info = {
     "name": "cupcko",
     "author": "cupcko",
