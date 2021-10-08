@@ -107,7 +107,7 @@ class Dupulicate_mesh_aply_key(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         return context.active_object and context.active_object.type == 'MESH' and context.active_object.data.shape_keys and bpy.context.mode=="OBJECT" \
-            and bpy.context.object.hide_set(0)
+     
     def execute(self,context):
         a=bpy.context.selected_objects
         if len(a)>=1:
