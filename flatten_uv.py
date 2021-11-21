@@ -12,7 +12,7 @@ class Create_flat_mesh(bpy.types.Operator):
     bl_options = {'REGISTER','UNDO'}
     @classmethod
     def poll(cls, context):
-        return context.active_object and context.active_object.type == 'MESH' and len(context.active_object.data.uv_layers) > 0 and bpy.context.mode=="OBJECT"
+        return context.active_object and context.active_object.type == 'MESH' and len(context.active_object.data.uv_layers) > 0 and bpy.context.mode=="OBJECT"              and bpy.context.object.hide_set(0)
     def execute(self,context):
         #obj=context.active_object
       
