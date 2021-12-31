@@ -676,7 +676,7 @@ classes=(
     Cupcko_annotate_surface,
     Cupcko_rotate_method_switch,
     flatten_uv.Dupulicate_mesh_aply_key,
-
+    Cupcko_return_selected_obj,
     Meshdata_Settings,
     TransferUV,
     TransferShapeData,

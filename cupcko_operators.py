@@ -62,3 +62,29 @@ class TransferUV(bpy.types.Operator):
         return {'FINISHED'}
     def invoke(self, context, event):
         return context.window_manager.invoke_confirm(self, event)
+
+
+class Cupcko_return_selected_obj(bpy.types.Operator):
+    '''多选物体,编辑模式选择一部分顶点,返回顶点所属物体'''
+    bl_idname = "cupcko.return_selected_obj"
+    bl_label = "选编反物"
+    bl_options = {'REGISTER', 'UNDO'}
+    @classmethod
+    def poll(cls, context):
+        return 1
+
+    def execute(self, context):
+        select_obj = bpy.context.selected_objects
+        list = []
+        bpy.ops.object.mode_set(mode='EDIT')
+        for obj in select_obj:
+            print(obj.data.total_vert_sel)
+            if obj.data.total_vert_sel > 0:
+                list.append(obj)
+                print(list)
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in list:
+            bpy.data.objects[obj.name].select_set(state=True)
+        self.report({'INFO'}, '返回编辑模顶点所属物体')
+        return {'FINISHED'}
