@@ -86,5 +86,5 @@ class Cupcko_return_selected_obj(bpy.types.Operator):
         bpy.ops.object.select_all(action='DESELECT')
         for obj in list:
             bpy.data.objects[obj.name].select_set(state=True)
-        self.report({'INFO'}, '返回编辑模顶点所属物体')
+        self.report({'INFO'}, '返回编辑模式顶点所属物体')
         return {'FINISHED'}
