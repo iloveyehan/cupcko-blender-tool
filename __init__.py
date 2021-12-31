@@ -24,10 +24,11 @@ bl_info = {
     "author": "cupcko",
     "version": (1, 0, 1),
     "blender": (2, 93, 0),
-    "location": "View3D > Toolbar and View3D",
+    "location": "到处都是",
     "description": "快速编辑,镜像,整理自定义骨骼形状",
     "tracker_url": "123",
-    "category": "用户"} 
+    # "category": "用户"
+                        }
 #
 #
 from bpy.types import Operator, AddonPreferences
