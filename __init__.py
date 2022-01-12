@@ -22,7 +22,7 @@ importlib.reload(cupcko_operators)
 bl_info = {
     "name": "cupcko",
     "author": "cupcko",
-    "version": (1, 0, 1),
+    "version": (1, 0, 2),
     "blender": (2, 93, 0),
     "location": "到处都是",
     "description": "快速编辑,镜像,整理自定义骨骼形状",
@@ -39,10 +39,10 @@ class ExampleAddonPreferences(AddonPreferences):
     # this must match the add-on name, use '__package__'
     # when defining this in a submodule of a python package.
     bl_idname = __name__
-    luanguage_switch:BoolProperty(name="语言切换顶部开关", default=True)
-    mouse_deps_switch:BoolProperty(name="鼠标深度顶部开关", default=True)
-    surface_paint_switch:BoolProperty(name="表面绘制顶部开关", default=True)
-    sculpt_rotate_switch:BoolProperty(name="旋转切换顶部开关", default=True)
+    luanguage_switch:BoolProperty(name="语言切换顶部开关", default=False)
+    mouse_deps_switch:BoolProperty(name="鼠标深度顶部开关", default=False)
+    surface_paint_switch:BoolProperty(name="表面绘制顶部开关", default=False)
+    sculpt_rotate_switch:BoolProperty(name="旋转切换顶部开关", default=False)
     # filepath: StringProperty(
     #     name="Example File Path",
     #     subtype='FILE_PATH',

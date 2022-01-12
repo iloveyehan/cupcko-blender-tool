@@ -78,10 +78,11 @@ class Cupcko_return_selected_obj(bpy.types.Operator):
         list = []
         bpy.ops.object.mode_set(mode='EDIT')
         for obj in select_obj:
-            print(obj.data.total_vert_sel)
-            if obj.data.total_vert_sel > 0:
-                list.append(obj)
-                print(list)
+            if obj.type=="MESH":
+            #print(obj.data.total_vert_sel)
+                if obj.data.total_vert_sel > 0:
+                    list.append(obj)
+                    print(list)
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
         for obj in list:
