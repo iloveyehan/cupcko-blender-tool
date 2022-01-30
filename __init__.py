@@ -452,12 +452,12 @@ def _edit_custom_shape():
         print (bone_custom_shape_transform.matrix)
         mesh_custom_shape.matrix_world=object_rig.matrix_world @ bone_custom_shape_transform.matrix
         #将物体模式的位移旋转缩放当成增量，进行矩阵乘法，得到最终骨骼所在位置角度，传给自定义骨骼
-        print (mesh_custom_shape.matrix_world)
+        #print (mesh_custom_shape.matrix_world)
         
     else:
         mesh_custom_shape.matrix_world=object_rig.matrix_world @ bone.matrix
-
-    mesh_custom_shape.scale *= bone.custom_shape_scale
+    
+    mesh_custom_shape.scale *= bone.custom_shape_scale_xyz
     mesh_custom_shape.scale *= bone.length
     print('3+'+bpy.context.active_object.name)
     bpy.ops.object.posemode_toggle()
