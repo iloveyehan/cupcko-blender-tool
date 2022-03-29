@@ -1,4 +1,5 @@
 import bpy
+import bmesh
 #from .mesh_data_transfer import MeshDataTransfer 
 from .cupcko_mesh_data_transfer import *
 class TransferShapeData(bpy.types.Operator):
@@ -60,6 +61,7 @@ class TransferUV(bpy.types.Operator):
         transfer_data.free()
         self.report({'INFO'},'UV transferred')
         return {'FINISHED'}
+    #弹出是否执行窗口
     def invoke(self, context, event):
         return context.window_manager.invoke_confirm(self, event)
 
@@ -67,7 +69,7 @@ class TransferUV(bpy.types.Operator):
 class Cupcko_return_selected_obj(bpy.types.Operator):
     '''多选物体,编辑模式选择一部分顶点,返回顶点所属物体'''
     bl_idname = "cupcko.return_selected_obj"
-    bl_label = "选编反物"
+    bl_label = "选编返物"
     bl_options = {'REGISTER', 'UNDO'}
     @classmethod
     def poll(cls, context):

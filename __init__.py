@@ -10,6 +10,7 @@ import sys
 import os
 #from .cupcko_operators import *
 from . import flatten_uv
+from . import cupcko_camera_driver
 #from .flatten_uv import set_active_object
 from .cupcko_mesh_data_transfer import *
 if sys.platform == 'win32':os.system('chcp 65001')
@@ -18,7 +19,7 @@ import importlib
 importlib.reload(flatten_uv)
 importlib.reload(cupcko_mesh_data_transfer)
 importlib.reload(cupcko_operators)
-
+importlib.reload(cupcko_camera_driver)
 bl_info = {
     "name": "cupcko",
     "author": "cupcko",
@@ -662,7 +663,25 @@ def _mirror_custom_shape(self):
                 bpy.context.scene.tool_settings.transform_pivot_point = 'MEDIAN_POINT'
         # else:
         #     print('选中骨骼无左右标识符,先加上.l或者.r后缀')
+class Cupcko_shape_keys_driver(bpy.types.Panel):
+    # Panel
+    # bl_space_type = 'VIEW_3D'
+    # bl_region_type = "HEADER"
+    # bl_options = {'REGISTER','UNDO'}
+    # bl_category = "Item"
 
+    # @classmethod
+    # def poll(cls, context):
+    #     return (context.object is not None)
+    bl_label = "Shape Keys"
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
+    
+    def draw(self, context):
+        layout = self.layout
+        add_lab=layout.row()
+        add_lab.operator(cupcko_camera_driver.Camera_Driver.bl_idname)
+        
+            
 classes=(
     flatten_uv.Create_flat_mesh,
     Cupcko_Panel,
@@ -683,6 +702,8 @@ classes=(
     TransferShapeData,
     #OBJECT_OT_addon_prefs_example,
     ExampleAddonPreferences,
+    cupcko_camera_driver.Camera_Driver,
+    
 )
 
 def register():
@@ -690,6 +711,8 @@ def register():
     for c in classes:
         register_class(c)	
     bpy.types.TOPBAR_HT_upper_bar.append(VIEW3D_HT_Language.draw)
+    bpy.types.DATA_PT_shape_keys.append(Cupcko_shape_keys_driver.draw)
+    
     bpy.types.Object.cupcko_mesh_transfer_object=PointerProperty(type=Meshdata_Settings)
     
 def unregister():
@@ -698,6 +721,7 @@ def unregister():
     for c in reversed(classes):
         unregister_class(c)
     bpy.types.TOPBAR_HT_upper_bar.remove(VIEW3D_HT_Language.draw)  
+    bpy.types.DATA_PT_shape_keys.remove(Cupcko_shape_keys_driver.draw)
     del bpy.types.Object.cupcko_mesh_transfer_object
   
 if __name__ == "__main__":
