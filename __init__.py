@@ -681,8 +681,9 @@ class Cupcko_shape_keys_driver(bpy.types.Panel):
         add_lab=layout.row()
         add_lab.operator(cupcko_camera_driver.Camera_Driver.bl_idname)
         
-            
+from . import cupcko_node_add            
 classes=(
+    cupcko_node_add.Cupcko_add_NdotL,
     flatten_uv.Create_flat_mesh,
     Cupcko_Panel,
     Cupcko_edit_custom_shape,

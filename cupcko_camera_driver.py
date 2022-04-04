@@ -30,6 +30,9 @@ class Camera_Driver(bpy.types.Operator):
     bl_idname = "cupcko.character_camera_driver"
     bl_label = "设置角度驱动"
     bl_options = {'REGISTER','UNDO'}
+    @classmethod
+    def poll(cls, context):
+        return bpy.context.object.data.shape_keys!=None
     def execute(self, context):
         #把函数名放在驱动器的namespace命名空间，方便在驱动器里调用这个函数
         bpy.app.driver_namespace['shape_key_LR']=shape_key_fc_LR 
