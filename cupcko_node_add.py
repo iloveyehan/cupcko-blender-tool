@@ -38,12 +38,14 @@ class Cupcko_add_NdotL(bpy.types.Operator):
                 context.object.name='MainLightEmpty'
                 bpy.context.view_layer.objects.active = bpy.data.objects['MainLightDirection']
                 bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+                bpy.data.objects[main_light_empty].hide_select=1
             else:
                 #把已经存在的空物体挪到灯光下面
                 bpy.data.objects[main_light_empty].matrix_world.translation=(loc[0],loc[1],loc[2]-1)
                 bpy.data.objects[main_light_empty].select_set(state=True) 
                 bpy.context.view_layer.objects.active = bpy.data.objects[main_light]
                 bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+                bpy.data.objects[main_light_empty].hide_select=1
         else:
         #如果有主光就清空下旋转，判断是否有空物体，没有就创建(有就意味着已经做过灯光向量，就不用管)
             if bpy.data.objects.get('MainLightEmpty') is None:
@@ -58,10 +60,12 @@ class Cupcko_add_NdotL(bpy.types.Operator):
                 context.object.name='MainLightEmpty'
                 bpy.context.view_layer.objects.active = bpy.data.objects['MainLightDirection']
                 bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+                bpy.data.objects[main_light_empty].hide_select=1
             else:
             #有可能手滑 动了空物体的位置
                 loc=bpy.data.objects[main_light].matrix_world.translation
                 bpy.data.objects[main_light_empty].matrix_world.translation=(loc[0],loc[1],loc[2]-1)
+                bpy.data.objects[main_light_empty].hide_select=1
 
 
         #重新设置激活物体为模型
@@ -148,19 +152,3 @@ class Cupcko_add_NdotL(bpy.types.Operator):
         bpy.data.materials[active_m_name].node_tree.links.new(n_normalize2.outputs[0],n_ndot1.inputs[0])
         bpy.data.materials[active_m_name].node_tree.links.new(n_normalize1.outputs[0],n_ndot1.inputs[1])        
         return {'FINISHED'}
-def digui(list):
-    find=0
-    for i in list: 
-        if 'new' ==i:    
-            find=1
-            return 'new'
-        try:
-            res +=digui(dir(i))
-            
-            
-                i='.'+i
-                return i
-        except:
-            pass
-
-digui(dir(bpy.context.object.active_material.node_tree.nodes))
