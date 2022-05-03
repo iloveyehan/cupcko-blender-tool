@@ -91,3 +91,35 @@ class Cupcko_return_selected_obj(bpy.types.Operator):
             bpy.data.objects[obj.name].select_set(state=True)
         self.report({'INFO'}, '返回编辑模式顶点所属物体')
         return {'FINISHED'}
+class SNA_OT_Hide_Empty(bpy.types.Operator):
+    bl_idname = "sna.hide_empty"
+    bl_label = "hide_empty"
+    bl_description = "隐藏所有空物体"
+    bl_options = {"REGISTER", "UNDO"}
+
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        try:
+            pass # Text Script Start
+            bpy.ops.object.select_all(action='SELECT')
+            bpy.ops.object.scale_clear(clear_delta=False)
+            bpy.ops.object.select_all(action='DESELECT')
+
+            for a in bpy.context.scene.objects:
+                if a.type=="EMPTY":
+                    a.hide_viewport=1
+                if a.type=="ARMATURE":
+                    bpy.ops.object.posemode_toggle()
+                    bpy.ops.pose.select_all(action='SELECT')
+                    bpy.ops.pose.scale_clear()
+                    bpy.ops.pose.rot_clear()
+                    bpy.ops.pose.loc_clear()
+                    bpy.ops.object.posemode_toggle()
+            pass # Text Script End
+        except Exception as exc:
+            print(str(exc) + " | Error in execute function of hide_empty")
+        return {"FINISHED"}

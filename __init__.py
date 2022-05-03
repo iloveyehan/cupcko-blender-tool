@@ -23,7 +23,7 @@ importlib.reload(cupcko_camera_driver)
 bl_info = {
     "name": "cupcko",
     "author": "cupcko",
-    "version": (1, 0, 2),
+    "version": (1, 0, 3),
     "blender": (2, 93, 0),
     "location": "到处都是",
     "description": "快速编辑,镜像,整理自定义骨骼形状",
@@ -681,8 +681,9 @@ class Cupcko_shape_keys_driver(bpy.types.Panel):
         add_lab=layout.row()
         add_lab.operator(cupcko_camera_driver.Camera_Driver.bl_idname)
         
-from . import cupcko_node_add            
+from . import cupcko_node_add 
 classes=(
+    SNA_OT_Hide_Empty,
     cupcko_node_add.Cupcko_add_NdotL,
     flatten_uv.Create_flat_mesh,
     Cupcko_Panel,

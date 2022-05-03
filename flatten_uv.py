@@ -84,10 +84,12 @@ def create_flat_mesh(bm,obj):
     bm.verts.ensure_lookup_table()
     scale=me.scale[0] 
     for vert in bm.verts:
-        #if vert.link_loops:
-        location=vert.link_loops[0][active_uv].uv
-        vert[new_flatten_uv]=Vector((3*location[0]/scale,3*location[1]/scale,0))
-    
+        #先看看是不是有非流形点飘在外面，有的话就给他删了
+        try:
+            location=vert.link_loops[0][active_uv].uv
+            vert[new_flatten_uv]=Vector((3*location[0]/scale,3*location[1]/scale,0))
+        except:
+            bm.verts.remove(vert)
 
     #shapekey.value=1
 def get_Seam_edges(bm):
