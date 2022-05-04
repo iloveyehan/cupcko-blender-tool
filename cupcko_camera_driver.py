@@ -26,7 +26,8 @@ def shape_key_fc_UD(objname):
         return angle_value 
          
 class Camera_Driver(bpy.types.Operator):
-    '''先拿到物体的x轴向量，跟相机对物体向量求向量积，获得夹角大小'''
+    '''自动设置相机驱动，名称格式right，left，up，down__fix'''
+    #'''先拿到物体的x轴向量，跟相机对物体向量求向量积，获得夹角大小'''
     bl_idname = "cupcko.character_camera_driver"
     bl_label = "设置角度驱动"
     bl_options = {'REGISTER','UNDO'}

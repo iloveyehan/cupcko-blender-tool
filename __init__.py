@@ -441,8 +441,7 @@ def _edit_custom_shape():
         pass
     
     mesh_custom_shape=bone.custom_shape
-    mesh_custom_shape.name= '_cs_'+bone.name
-    mesh_custom_shape.data.name= '_cs_'+bone.name
+    
 
     mesh_custom_shape['object_rig']=object_rig.name
     bone_custom_shape_transform=bone.custom_shape_transform
@@ -463,9 +462,13 @@ def _edit_custom_shape():
     print('3+'+bpy.context.active_object.name)
     bpy.ops.object.posemode_toggle()
     bpy.data.objects[object_rig.name].select_set(False)
-    bpy.context.view_layer.objects.active=mesh_custom_shape
-    unhide_object(mesh_custom_shape)
     
+    unhide_object(mesh_custom_shape)
+    bpy.context.view_layer.objects.active=mesh_custom_shape
+    bpy.data.objects[mesh_custom_shape.name].select_set(1)
+    bpy.ops.object.make_single_user(object=True, obdata=True, material=False, animation=False, obdata_animation=False)
+    mesh_custom_shape.name= '_cs_'+bone.name
+    mesh_custom_shape.data.name= '_cs_'+bone.name
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='SELECT')
 
@@ -660,6 +663,8 @@ def _mirror_custom_shape(self):
                 bpy.ops.object.location_clear(clear_delta=False)
 
                 bpy.ops.object.mode_set(mode='POSE')
+                mirror_bone.custom_shape_scale_xyz=(1,1,1)
+
                 bpy.context.scene.tool_settings.transform_pivot_point = 'MEDIAN_POINT'
         # else:
         #     print('选中骨骼无左右标识符,先加上.l或者.r后缀')
