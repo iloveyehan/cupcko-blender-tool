@@ -27,8 +27,16 @@ for i in bpy.context.object.data.bones:
         i.name = re.search(f'(.*){namespace}(.*)', i.name, re.I | re.M).group(1) + re.search(f'(.*){namespace}(.*)',
                                                                                              i.name, re.I | re.M).group(
             2)
-# for a in bpy.context.scene.objects:
-#     if len(a.modifiers) > 0 and a.modifiers[0].type == 'ARMATURE':
-#         a.modifiers[0].object = bpy.data.objects['gameRig_RIG-Armature']
 
-
+bpy.ops.object.mode_set(mode='EDIT')
+for  a in bpy.context.selectable_objects:
+    if a==bpy.context.view_layer.objects.active:
+        active=a
+        continue
+        obj=a
+for b in a.data.edit_bones:
+    for obj_b in obj.data.edit_bones:
+        if b.name==obj_b.name:
+            obj_b.head=b.head
+            obj_b.tail=b.head
+            obj_b.roll=b.roll

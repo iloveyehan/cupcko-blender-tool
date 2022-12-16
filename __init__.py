@@ -26,7 +26,7 @@ importlib.reload(cupcko_camera_driver)
 bl_info = {
     "name": "cupcko",
     "author": "cupcko",
-    "version": (1, 0, 3),
+    "version": (1, 0, 4),
     "blender": (2, 93, 0),
     "location": "到处都是",
     "description": "快速编辑,镜像,整理自定义骨骼形状",
@@ -47,7 +47,6 @@ class ExampleAddonPreferences(AddonPreferences):
     mouse_deps_switch: BoolProperty(name="鼠标深度顶部开关", default=False)
     surface_paint_switch: BoolProperty(name="表面绘制顶部开关", default=False)
     sculpt_rotate_switch: BoolProperty(name="旋转切换顶部开关", default=False)
-
 
     def draw(self, context):
         layout = self.layout
@@ -123,8 +122,10 @@ class Cupcko_Panel(bpy.types.Panel):
         transfer_shape = transfer_shape_row.row(align=True)
         transfer_shape.operator(TransferShapeData.bl_idname)
         transfer_shape.prop(obj_prop, 'transfer_shape_as_key', text='', toggle=True, icon='SHAPEKEY_DATA')
+
+
 def sna_add_to_data_pt_modifiers_E5089(self, context):
-    if bpy.context.active_object.type=='MESH' and bpy.context.active_object.modifiers and bpy.context.active_object.data.shape_keys:
+    if bpy.context.active_object.type == 'MESH' and bpy.context.active_object.modifiers and bpy.context.active_object.data.shape_keys:
         layout = self.layout
         box_89ACB = layout.box()
         box_89ACB.alert = False
@@ -144,8 +145,9 @@ def sna_add_to_data_pt_modifiers_E5089(self, context):
         row_2AF10.scale_x = 1.0
         row_2AF10.scale_y = 1.0
         row_2AF10.alignment = 'Expand'.upper()
-        op = row_2AF10.operator('cupcko.apply_modi_with_shapekey', text='强制应用全部', icon_value=0, emboss=True, depress=False)
-        op.modi_name='all'
+        op = row_2AF10.operator('cupcko.apply_modi_with_shapekey', text='强制应用全部', icon_value=0, emboss=True,
+                                depress=False)
+        op.mod_name = 'all'
         row_33EA9 = box_89ACB.row(heading='', align=False)
         row_33EA9.alert = False
         row_33EA9.enabled = True
@@ -156,8 +158,10 @@ def sna_add_to_data_pt_modifiers_E5089(self, context):
         row_33EA9.scale_y = 1.0
         row_33EA9.alignment = 'Expand'.upper()
         for mod in bpy.context.active_object.modifiers:
-            op=row_33EA9.operator('cupcko.apply_modi_with_shapekey', text=f'{mod.name}', icon_value=0, emboss=True, depress=False)
-            op.modi_name=mod.name
+            op = row_33EA9.operator('cupcko.apply_modi_with_shapekey', text=f'{mod.name}', icon_value=0, emboss=True,
+                                    depress=False)
+            op.mod_name = mod.name
+
 
 class VIEW3D_HT_Language(bpy.types.Header):
     # Panel
@@ -720,8 +724,8 @@ def _mirror_custom_shape(self):
 
                 bpy.context.scene.tool_settings.transform_pivot_point = 'MEDIAN_POINT'
 
-class Cupcko_shape_keys_driver(bpy.types.Panel):
 
+class Cupcko_shape_keys_driver(bpy.types.Panel):
     bl_label = "Shape Keys"
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
 
@@ -729,7 +733,6 @@ class Cupcko_shape_keys_driver(bpy.types.Panel):
         layout = self.layout
         add_lab = layout.row()
         add_lab.operator(cupcko_camera_driver.Camera_Driver.bl_idname)
-
 
 
 from . import cupcko_node_add
@@ -756,7 +759,7 @@ classes = [
     TransferShapeData,
     ExampleAddonPreferences,
     cupcko_camera_driver.Camera_Driver,
-    ApylyModiWithShapekey ,
+    ApylyModiWithShapekey,
 ]
 
 
@@ -768,6 +771,7 @@ def register():
     bpy.types.DATA_PT_shape_keys.append(Cupcko_shape_keys_driver.draw)
     bpy.types.DATA_PT_modifiers.append(sna_add_to_data_pt_modifiers_E5089)
     bpy.types.Object.cupcko_mesh_transfer_object = PointerProperty(type=Meshdata_Settings)
+
 
 def unregister():
     from bpy.utils import unregister_class

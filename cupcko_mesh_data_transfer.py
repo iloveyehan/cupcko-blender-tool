@@ -200,7 +200,7 @@ class MeshData:
         sk = self.obj.shape_key_add(name=shape_key_name)
 
         # 传入新形态键的顶点数据
-        sk.data.foreach_set('co', co.ravel())  # 传入(属性,序列)
+        sk.data.foreach_set("co", co.ravel())  # 传入(属性,序列)
         # 检测初始状态
         sk.value=value
         if activate:
@@ -303,6 +303,10 @@ class MeshData:
         self.reset_shape_keys_values()
         shape_arrays={}
         basis=['Basis','basis','基型']
+        temp_show_only_shape_key=self.obj.show_only_shape_key
+        if temp_show_only_shape_key :
+           self.obj.show_only_shape_key = 0
+
         for sk in self.shape_keys:
             if sk.name in basis:
                 continue
@@ -311,6 +315,8 @@ class MeshData:
             array=self.convert_shape_key_to_array(sk)
             shape_arrays[sk.name]=array
         self.set_shape_keys_values(stored_values)
+        self.obj.show_only_shape_key = temp_show_only_shape_key
+
         return shape_arrays
 
     def convert_shape_key_to_array(self, shape_key):
@@ -323,7 +329,8 @@ class MeshData:
             verts=temp_mesh.vertices
             v_count=len(verts)
             co=np.zeros(v_count*3,dtype=np.float32)
-            verts.foreach_get('co',co)
+            verts.foreach_get("co",co)
+            # co=co.reshape(-1,3)
             co.shape=(v_count,3)
             temp_bm.free()
             bpy.data.meshes.remove(temp_mesh)
@@ -533,11 +540,25 @@ class MeshDataTransfer:
     def transfer_vertex_position(self, as_shape_key=False):
         #
         transferred_positon = self.get_projected_vertices_on_source()
+        shape_key_basis=['Basis','basis','基型']
         if as_shape_key:
             shape_key_name = "{}.transferred".format(self.source.obj.name)
             self.thisobj.set_position_as_shape_key(shape_key_name=shape_key_name, co=transferred_positon, activate=1)
         else:
-            self.thisobj.set_verts_position(transferred_positon)
+            # print(self.thisobj.name)
+            #有时候物体有形态键了，但是想传形状给basis
+            if not hasattr(self.thisobj.mesh.shape_keys,'key_blocks'):
+
+                self.thisobj.set_verts_position(transferred_positon)
+            else:
+                for i in shape_key_basis:
+
+                    try:
+                        self.thisobj.mesh.shape_keys.key_blocks[i].data.foreach_set('co',transferred_positon.ravel())
+                    except:
+                        pass
+
+
         return 1
 
     def transfer_uv(self):

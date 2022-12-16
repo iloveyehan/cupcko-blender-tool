@@ -3,14 +3,16 @@ import bmesh
 # from .mesh_data_transfer import MeshDataTransfer
 from .cupcko_mesh_data_transfer import *
 
+
 class ApylyModiWithShapekey(bpy.types.Operator):
     '''传递物体形状'''
     bl_idname = "cupcko.apply_modi_with_shapekey"
     bl_label = "应用带形态键的模型的修改器"
     bl_options = {'REGISTER', 'UNDO'}
-    modi_name: bpy.props.StringProperty(
+    mod_name: bpy.props.StringProperty(
         default=''
     )
+
     @classmethod
     def poll(cls, context):
 
@@ -18,7 +20,7 @@ class ApylyModiWithShapekey(bpy.types.Operator):
 
     def execute(self, context):
         '''
-       1.应用单个
+
         要遍历修改器，暂时关闭其他修改器
         先get graph
         然后保存模型的每个形态键的状态
@@ -26,7 +28,8 @@ class ApylyModiWithShapekey(bpy.types.Operator):
         然后应用修改器，然后再传回去
         再开启其他修改器
         '''
-        if self.modi_name=='all':
+        if self.mod_name == 'all':
+            print(self.mod_name)
             # 生成meshdata
             apply_all = MeshData(context.active_object, deformed=True)
 
@@ -40,50 +43,50 @@ class ApylyModiWithShapekey(bpy.types.Operator):
                 bpy.ops.object.convert(target='MESH')
 
             # 还原形态键
-            for sk_name in sk_array:
-                apply_all.set_position_as_shape_key(shape_key_name=sk_name, co=sk_array[sk_name],
-                                                       value=sk_values[sk_name])
+            for sk in sk_array:
+                apply_all.set_position_as_shape_key(shape_key_name=sk, co=sk_array[sk],
+                                                   value=sk_values[sk])
 
         else:
-            modi_temp = bpy.context.active_object.modifiers
-            modi_contr={}
-            for modi in modi_temp:
-                modi_contr[modi.name]=bpy.context.active_object.modifiers[modi.name].show_viewport
-                if self.modi_name == modi.name:
+            print(self.mod_name)
+            mod_temp = bpy.context.active_object.modifiers
+            mod_off = {}
+            for modi in mod_temp:
+                # 记录修改器状态
+                mod_off[modi.name] = bpy.context.active_object.modifiers[modi.name].show_viewport
+                if self.mod_name == modi.name:
                     # 跳过当前修改
                     continue
                 else:
                     # 暂时关闭其他修改器
                     bpy.context.active_object.modifiers[modi.name].show_viewport = False
 
+            # 生成meshdata
+            apply_single = MeshData(context.active_object, deformed=True)
 
-            #生成meshdata
-            apply_single=MeshData(context.active_object,deformed=True)
+            # 生成形态键坐标组,形态键值 清单
+            sk_array = apply_single.get_shape_keys_vert_pos()
+            sk_values = apply_single.store_shape_keys_name_value()
 
-            #生成形态键坐标组,形态键值 清单
-            sk_array=apply_single.get_shape_keys_vert_pos()
-            sk_values=apply_single.store_shape_keys_name_value()
-
-
-
-            #删除形态键 应用修改器
+            # 删除形态键 应用修改器
             with bpy.context.temp_override(active_object=apply_single.obj):
                 bpy.ops.object.shape_key_remove(all=True)
-                bpy.ops.object.modifier_apply(modifier=self.modi_name)
-            #还原形态键
-            for sk_name in sk_array:
-                apply_single.set_position_as_shape_key(shape_key_name=sk_name,co=sk_array[sk_name],value=sk_values[sk_name])
+                bpy.ops.object.modifier_apply(modifier=self.mod_name)
+            # 还原形态键
+            for sk in sk_array:
+                apply_single.set_position_as_shape_key(shape_key_name=sk, co=sk_array[sk], value=sk_values[sk])
 
-            for modi in modi_temp:
+            for modi in mod_temp:
                 # modi_contr[modi.name]=bpy.context.active_object.modifiers[modi.name].show_viewport
-                if self.modi_name == modi.name:
+                if self.mod_name == modi.name:
                     # 跳过当前修改
                     continue
                 else:
                     # 暂时关闭其他修改器
-                    bpy.context.active_object.modifiers[modi.name].show_viewport = modi_contr[modi.name]
+                    bpy.context.active_object.modifiers[modi.name].show_viewport = mod_off[modi.name]
         self.report({'INFO'}, '应用完了')
         return {'FINISHED'}
+
 
 class TransferShapeData(bpy.types.Operator):
     '''传递物体形状'''
