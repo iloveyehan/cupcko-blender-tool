@@ -566,10 +566,15 @@ class MeshDataTransfer:
 
     def get_projected_vertices_on_source(self):
         '''返回投影在采样网格上的顶点坐标'''
+        transferred_position=None
+        if self.symmetry_axis is None:
         # 取得采样网格顶点矩阵
-        transfer_coord = self.source.get_verts_position()
-        transferred_position = self.get_transferred_vert_coords(transfer_coord)
-
+            transfer_coord = self.source.get_verts_position()
+            transferred_position = self.get_transferred_vert_coords(transfer_coord)
+        else:
+            # co=np.zeros(len(self.thisobj.vertex_map)*3,dtype=np.float32)
+            # co.shape=(len(self.thisobj.vertex_map),3)
+            transferred_position=np.array([self.thisobj.vertex_map[i] for i in self.thisobj.vertex_map])
         undeformed_verts = self.thisobj.get_verts_position()
 
         transferred_position = np.where(self.missed_projections, undeformed_verts, transferred_position)
@@ -618,28 +623,18 @@ class MeshDataTransfer:
         return 1
     def fix_mirror_transfer_vertex_position(self,as_shape_key=False):
 
-        # transferred_positon = self.get_projected_vertices_on_source()
+        transferred_positon = self.get_projected_vertices_on_source()
         shape_key_basis = ['Basis', 'basis', '基型']
-        # if as_shape_key:
 
-            # shape_key_name = "{}.transferred".format(self.source.obj.name)
-            # self.thisobj.set_position_as_shape_key(shape_key_name=shape_key_name, co=transferred_positon, activate=1)
-        # else:
-            # print(self.thisobj.name)
             # 有时候物体有形态键了，但是想传形状给basis
         if not hasattr(self.thisobj.mesh.shape_keys, 'key_blocks'):
-            for v in self.thisobj.mesh.vertices:
-                if v.co != self.thisobj.vertex_map[v.index]:
-                    v.co = self.thisobj.vertex_map[v.index]
-            pass
-            # self.thisobj.set_verts_position(transferred_positon)
+
+            self.thisobj.set_verts_position(transferred_positon)
         else:
             for s in shape_key_basis:
 
                 try:
-                    # self.thisobj.mesh.shape_keys.key_blocks[i].data.foreach_set('co', transferred_positon.ravel())
-                    for i in range(len(self.thisobj.vertex_map)):
-                        setattr(self.thisobj.mesh.shape_keys.key_blocks[s].data[i], 'co', self.thisobj.vertex_map[i])
+                    self.thisobj.mesh.shape_keys.key_blocks[s].data.foreach_set('co', transferred_positon.ravel())
                 except:
                     pass
         # 刷新视图
