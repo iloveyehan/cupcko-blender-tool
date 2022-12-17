@@ -45,7 +45,7 @@ class ApylyModiWithShapekey(bpy.types.Operator):
             # 还原形态键
             for sk in sk_array:
                 apply_all.set_position_as_shape_key(shape_key_name=sk, co=sk_array[sk],
-                                                   value=sk_values[sk])
+                                                    value=sk_values[sk])
 
         else:
             print(self.mod_name)
@@ -216,3 +216,43 @@ class SNA_OT_Hide_Empty(bpy.types.Operator):
         except Exception as exc:
             print(str(exc) + " | Error in execute function of hide_empty")
         return {"FINISHED"}
+
+
+class Cupcko_fix_vertex_mirroring(bpy.types.Operator):
+    '''修复看起来镜像但是不对称的顶点'''
+    bl_idname = "cupcko.fix_vertex_mirroring"
+    bl_label = "修复看起来镜像但是不对称的顶点"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return 1
+
+    def execute(self, context):
+        thisobj = context.active_object
+        source=bpy.data.objects.new('temp_mirror_mesh',thisobj.data.copy())
+        bpy.context.collection.objects.link(source)
+        mod = source.modifiers.new('temp_mirror', 'MIRROR')
+        mod.use_bisect_axis[0] = True
+        mod.merge_threshold = 0.0001
+        mod.bisect_threshold = 0.0001
+        a = context.active_object.cupcko_mesh_transfer_object
+        mask_vertex_group = a.vertex_group_filter
+        invert_mask = a.invert_vertex_group_filter
+        world_space = False
+        search_method=a.search_method
+        transfer_modified_source=a.transfer_modified_source
+        transfer_data = MeshDataTransfer(source=source, thisobj=thisobj, search_method=search_method,
+                                         vertex_group=mask_vertex_group,
+                                         invert_vertex_group=invert_mask,
+                                         deformed_source=True, world_space=world_space,symmetry_axis=1)
+        transferred = transfer_data.fix_mirror_transfer_vertex_position()
+
+        transfer_data.free()
+        bpy.data.objects.remove(source)
+
+        if not transferred:
+            self.report({'INFO'}, 'Unable to perform the operation')
+            return {'CANCELLED'}
+        self.report({'INFO'}, 'Shape transferred')
+        return {'FINISHED'}

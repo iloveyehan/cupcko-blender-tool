@@ -760,6 +760,7 @@ classes = [
     ExampleAddonPreferences,
     cupcko_camera_driver.Camera_Driver,
     ApylyModiWithShapekey,
+    Cupcko_fix_vertex_mirroring,
 ]
 
 
