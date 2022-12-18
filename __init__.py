@@ -1,7 +1,6 @@
 '''
 mesh transfer部分参考了Maurizio Memoli的meshdatatransfer
 '''
-from .cupcko_operators import *
 import bpy
 from bpy import context
 from bpy.props import PointerProperty
@@ -11,7 +10,6 @@ import os
 from .cupcko_operators import *
 from . import flatten_uv
 from . import cupcko_camera_driver
-# from .flatten_uv import set_active_object
 from .cupcko_mesh_data_transfer import *
 
 if sys.platform == 'win32': os.system('chcp 65001')
@@ -43,18 +41,21 @@ class ExampleAddonPreferences(AddonPreferences):
     # this must match the add-on name, use '__package__'
     # when defining this in a submodule of a python package.
     bl_idname = __name__
-    luanguage_switch: BoolProperty(name="语言切换顶部开关", default=False)
-    mouse_deps_switch: BoolProperty(name="鼠标深度顶部开关", default=False)
-    surface_paint_switch: BoolProperty(name="表面绘制顶部开关", default=False)
-    sculpt_rotate_switch: BoolProperty(name="旋转切换顶部开关", default=False)
+    luanguage_switch: BoolProperty(name="语言切换", default=False)
+    mouse_deps_switch: BoolProperty(name="鼠标深度", default=False)
+    surface_paint_switch: BoolProperty(name="表面绘制", default=False)
+    emulate_3_button_mouse: BoolProperty(name="三键鼠标", default=False)
+    sculpt_rotate_switch: BoolProperty(name="旋转切换", default=False)
 
     def draw(self, context):
         layout = self.layout
         layout.label(text="预设")
-        layout.prop(self, "luanguage_switch", toggle=True)
-        layout.prop(self, "mouse_deps_switch", toggle=True)
-        layout.prop(self, "surface_paint_switch", toggle=True)
-        layout.prop(self, "sculpt_rotate_switch", toggle=True)
+        row = layout.row(align=True)
+        row.prop(self, "luanguage_switch", toggle=True)
+        row.prop(self, "mouse_deps_switch", toggle=True)
+        row.prop(self, "surface_paint_switch", toggle=True)
+        row.prop(self, "emulate_3_button_mouse", toggle=True)
+        row.prop(self, "sculpt_rotate_switch", toggle=True)
 
 
 class Cupcko_Panel(bpy.types.Panel):
@@ -71,57 +72,147 @@ class Cupcko_Panel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        # v =  bpy.context.preferences.view.use_translate_interface
-
-        row = layout.row(align=True)
-        # language_switch=layout.row(align=True)
-        row1 = layout.row()
-        if bpy.context.mode != 'EDIT_MESH':
-            row.operator("cup.edit_custom_shape")
-            row.operator(Cupcko_mirror_custom_shape.bl_idname, text="镜像", icon="MOD_MIRROR")
-            row.operator(Cupcko_cs_group_orgnize.bl_idname)
-
+        box_4A26D = layout.box()
+        box_4A26D.alert = False
+        box_4A26D.enabled = True
+        box_4A26D.active = True
+        box_4A26D.use_property_split = False
+        box_4A26D.use_property_decorate = False
+        box_4A26D.alignment = 'Right'.upper()
+        box_4A26D.scale_x = 1.0
+        box_4A26D.scale_y = 1.1380000114440918
+        box_4A26D.operator_context = "INVOKE_DEFAULT" if True else "EXEC_DEFAULT"
+        col_125D6 = box_4A26D.column(heading='', align=True)
+        col_125D6.alert = False
+        col_125D6.enabled = True
+        col_125D6.active = True
+        col_125D6.use_property_split = False
+        col_125D6.use_property_decorate = False
+        col_125D6.scale_x = 1.0
+        col_125D6.scale_y = 1.399999976158142
+        col_125D6.alignment = 'Expand'.upper()
+        col_125D6.operator_context = "INVOKE_DEFAULT" if True else "EXEC_DEFAULT"
+        row_B24E1 = col_125D6.row(heading='', align=True)
+        row_B24E1.alert = False
+        row_B24E1.enabled = True
+        row_B24E1.active = True
+        row_B24E1.use_property_split = False
+        row_B24E1.use_property_decorate = False
+        row_B24E1.scale_x = 1.0
+        row_B24E1.scale_y = 1.0
+        row_B24E1.alignment = 'Expand'.upper()
+        row_B24E1.operator_context = "INVOKE_DEFAULT" if True else "EXEC_DEFAULT"
+        if bpy.context.preferences.inputs.use_mouse_depth_navigate:
+            op = row_B24E1.operator(Cupcko_rotate_center_switch.bl_idname, text='鼠标深度', icon_value=256, emboss=True,
+                                    depress=False)
         else:
-            row.operator(Cupcko_exit_edit_shape.bl_idname)
-
-        if bpy.context.preferences.inputs.use_mouse_depth_navigate == True:
-            row1.operator(Cupcko_rotate_center_switch2.bl_idname)
-            row1.operator(Cupcko_annotate_surface.bl_idname)
+            op = row_B24E1.operator(Cupcko_rotate_center_switch.bl_idname, text='屏幕深度', icon_value=256, emboss=True,
+                                    depress=False)
+        op = row_B24E1.operator('cup.annotate_surface', text='表面绘制', icon_value=197, emboss=True, depress=False)
+        if bpy.context.preferences.inputs.use_mouse_emulate_3_button:
+            op = row_B24E1.operator(Cupcko_3button_mouse_switch.bl_idname, text='三键已开启', icon_value=209, emboss=True,
+                                    depress=False)
         else:
-            row1.operator(Cupcko_rotate_center_switch.bl_idname)
-            row1.operator(Cupcko_annotate_surface.bl_idname)
+            op = row_B24E1.operator(Cupcko_3button_mouse_switch.bl_idname, text='三键已关闭', icon_value=209, emboss=True,
+                                    depress=False)
+
         if bpy.context.preferences.inputs.view_rotate_method == 'TRACKBALL':
-            row1.operator(Cupcko_rotate_method_switch.bl_idname, text='当前:轨迹球')
+            op = row_B24E1.operator(Cupcko_rotate_method_switch.bl_idname, text='当前:轨迹球', icon_value=238, emboss=True,
+                                    depress=False)
         else:
-            row1.operator(Cupcko_rotate_method_switch.bl_idname, text='当前:转盘')
-        flat_mesh = layout.row()
+            op = row_B24E1.operator(Cupcko_rotate_method_switch.bl_idname, text='当前:转盘', icon_value=238, emboss=True,
+                                    depress=False)
+        row_23868 = col_125D6.row(heading='', align=True)
+        row_23868.alert = False
+        row_23868.enabled = True
+        row_23868.active = True
+        row_23868.use_property_split = False
+        row_23868.use_property_decorate = False
+        row_23868.scale_x = 1.0
+        row_23868.scale_y = 1.0
+        row_23868.alignment = 'Expand'.upper()
+        row_23868.operator_context = "INVOKE_DEFAULT" if True else "EXEC_DEFAULT"
+        if bpy.context.mode != 'EDIT_MESH':
+            op = row_23868.operator('cup.edit_custom_shape', text='编辑', icon_value=548, emboss=True, depress=False)
+            op = row_23868.operator('cup.mirror_custom_shape', text='镜像', icon_value=446, emboss=True, depress=False)
+            op = row_23868.operator('cup.cs_group_orgnize', text='整理', icon_value=179, emboss=True, depress=False)
+        else:
+            op = row_23868.operator(Cupcko_exit_edit_shape.bl_idname)
+        row_AF6DF = col_125D6.row(heading='', align=True)
+        row_AF6DF.alert = False
+        row_AF6DF.enabled = True
+        row_AF6DF.active = True
+        row_AF6DF.use_property_split = True
+        row_AF6DF.use_property_decorate = False
+        row_AF6DF.scale_x = 1.0
+        row_AF6DF.scale_y = 1.0
+        row_AF6DF.alignment = 'Expand'.upper()
+        row_AF6DF.operator_context = "INVOKE_DEFAULT" if False else "EXEC_DEFAULT"
         obj = context.active_object
         if obj and obj.type == 'MESH' and obj.data.shape_keys and obj.data.shape_keys.key_blocks.get('uv_flat') and \
                 obj.data.shape_keys.key_blocks['uv_flat'].value > 0.99:
-            flat_mesh.operator(flatten_uv.Create_flat_mesh.bl_idname, text="UV>Mesh")
+            op = row_AF6DF.operator(flatten_uv.Create_flat_mesh.bl_idname, text='UV>Mesh', icon_value=582, emboss=True,
+                                    depress=False)
         else:
-            flat_mesh.operator(flatten_uv.Create_flat_mesh.bl_idname)
-        # flat_mesh.operator(flatten_uv.Create_flat_mesh.bl_idname)
+            op = row_AF6DF.operator('cup.create_flat_mesh', text='MESH>UV', icon_value=582, emboss=True, depress=False)
+        op = row_AF6DF.operator(flatten_uv.Dupulicate_mesh_aply_key.bl_idname, text='应用', icon_value=583, emboss=True,
+                                depress=False)
+        col_BA204 = box_4A26D.column(heading='', align=True)
+        col_BA204.alert = False
+        col_BA204.enabled = True
+        col_BA204.active = True
+        col_BA204.use_property_split = False
+        col_BA204.use_property_decorate = False
+        col_BA204.scale_x = 1.0
+        col_BA204.scale_y = 1.4
+        col_BA204.alignment = 'Expand'.upper()
+        col_BA204.operator_context = "INVOKE_DEFAULT" if True else "EXEC_DEFAULT"
+        row_A164F = col_BA204.row(heading='', align=True)
+        row_A164F.alert = False
+        row_A164F.enabled = True
+        row_A164F.active = True
+        row_A164F.use_property_split = False
+        row_A164F.use_property_decorate = False
+        row_A164F.scale_x = 1.2
+        row_A164F.scale_y = 1
+        row_A164F.alignment = 'Expand'.upper()
+        row_A164F.operator_context = "INVOKE_DEFAULT" if True else "EXEC_DEFAULT"
 
-        flat_mesh.operator(flatten_uv.Dupulicate_mesh_aply_key.bl_idname)
         obj_prop = context.object.cupcko_mesh_transfer_object
-        pickobj = layout.row()
-        pickobj.prop_search(obj_prop, "mesh_shape_get_from_this", context.scene, "objects", text="目标")
-        vertex_groups = layout.row(align=True)
-        vertex_groups.prop_search(obj_prop, "vertex_group_filter", bpy.context.active_object, "vertex_groups")
-        vertex_groups.prop(obj_prop, 'invert_vertex_group_filter', text='', toggle=True, icon='ARROW_LEFTRIGHT')
-        modifi = layout.row()
-        modifi.prop(obj_prop, 'transfer_modified_source', text='采样形变')
-        search = layout.row(align=True)
-        search.prop(obj_prop, 'search_method', expand=True, text="Search method")
-        transferbox = layout.row()
-        transfer_uv_row = transferbox.row()
-        transfer_uv = transfer_uv_row.row()
-        transfer_uv.operator(TransferUV.bl_idname)
-        transfer_shape_row = transferbox.row()
-        transfer_shape = transfer_shape_row.row(align=True)
-        transfer_shape.operator(TransferShapeData.bl_idname)
-        transfer_shape.prop(obj_prop, 'transfer_shape_as_key', text='', toggle=True, icon='SHAPEKEY_DATA')
+
+        op = row_A164F.prop(obj_prop, 'transfer_modified_source', text='', toggle=True, icon_value=94)
+        row_A164F.prop_search(obj_prop, "mesh_shape_get_from_this", context.scene, "objects", text='', icon='NONE')
+        row_A164F.prop_search(obj_prop, "vertex_group_filter", bpy.context.active_object, "vertex_groups", text='',
+                              icon='GROUP_VERTEX')
+        op = row_A164F.prop(obj_prop, 'invert_vertex_group_filter', text='', toggle=True, icon_value=8)
+        row_DCBDC = col_BA204.row(heading='', align=True)
+        row_DCBDC.alert = False
+        row_DCBDC.enabled = True
+        row_DCBDC.active = True
+        row_DCBDC.use_property_split = False
+        row_DCBDC.use_property_decorate = False
+        row_DCBDC.scale_x = 1.0
+        row_DCBDC.scale_y = 1.0
+        row_DCBDC.alignment = 'Expand'.upper()
+        row_DCBDC.operator_context = "INVOKE_DEFAULT" if True else "EXEC_DEFAULT"
+        row_86263 = col_BA204.row(heading='', align=True)
+        row_86263.alert = False
+        row_86263.enabled = True
+        row_86263.active = True
+        row_86263.use_property_split = False
+        row_86263.use_property_decorate = False
+        row_86263.scale_x = 1.3
+        row_86263.scale_y = 1.0
+        row_86263.alignment = 'Expand'.upper()
+        row_86263.operator_context = "INVOKE_DEFAULT" if True else "EXEC_DEFAULT"
+        row_86263.prop(obj_prop, 'search_method', text='', icon_value=30, emboss=True, expand=False, slider=True,
+                       toggle=False, invert_checkbox=False,
+                       index=0)
+        op = row_86263.operator('cupcko.transfer_uv_data', text='传递UV', icon_value=493, emboss=True, depress=False)
+        op = row_86263.operator('cupcko.transfer_shape_data', text='传递形状', icon_value=452, emboss=True, depress=False)
+        row_86263.prop(obj_prop, 'transfer_shape_as_key', text='', icon_value=176)
+        op = row_86263.operator(Cupcko_fix_vertex_mirroring.bl_idname, text='修复对称', icon_value=737, emboss=True,
+                                depress=False)
 
 
 def sna_add_to_data_pt_modifiers_E5089(self, context):
@@ -168,29 +259,26 @@ class VIEW3D_HT_Language(bpy.types.Header):
     bl_space_type = 'VIEW_3D'
     bl_region_type = "HEADER"
     bl_options = {'REGISTER', 'UNDO'}
-    # bl_category = "Item"
-
-    # @classmethod
-    # def poll(cls, context):
-    #     return (context.object is not None)
 
     bl_label = "Cupcko"
 
     def draw(self, context):
         if context.region.alignment != 'RIGHT':
             layout = self.layout
-            language_switch = layout.row(align=True)
+            row1 = layout.row(align=True)
             if bpy.context.preferences.addons[__name__].preferences.luanguage_switch:
-                language_switch.operator("cup.language_switch")
-            row1 = layout.row()
+                row1.operator("cup.language_switch")
+            # row1 = layout.row()
             if bpy.context.preferences.addons[__name__].preferences.mouse_deps_switch:
-                if bpy.context.preferences.inputs.use_mouse_depth_navigate == True:
-                    row1.operator("cup.depth_off")
+                if bpy.context.preferences.inputs.use_mouse_depth_navigate:
+                    row1.operator(Cupcko_rotate_center_switch.bl_idname, text='鼠标深度')
 
                 else:
-                    row1.operator("cup.depth_on")
+                    row1.operator(Cupcko_rotate_center_switch.bl_idname, text='鼠标深度')
             if bpy.context.preferences.addons[__name__].preferences.surface_paint_switch:
                 row1.operator("cup.annotate_surface")
+            if bpy.context.preferences.addons[__name__].preferences.emulate_3_button_mouse:
+                row1.operator("cup.3button_mouse_switch",text='鼠标深度')
             if bpy.context.preferences.addons[__name__].preferences.sculpt_rotate_switch:
                 if bpy.context.preferences.inputs.view_rotate_method == 'TRACKBALL':
                     row1.operator(Cupcko_rotate_method_switch.bl_idname, text='当前:轨迹球')
@@ -223,7 +311,8 @@ class Meshdata_Settings(bpy.types.PropertyGroup):
                ('TOPOLOGY_SPACE', 'Topology', '', 4)],
         name="Object Space", default='LOCAL_SPACE')
     search_method: bpy.props.EnumProperty(
-        items=[('CLOSEST', 'Closest', '', 1), ('RAYCAST', 'Raycast', '', 2)],
+        items=[('CLOSEST', 'Closest', '', 1), ('RAYCAST', 'Raycast', '', 2), ('-X', 'Left', '', 3),
+               ('+X', 'Right', '', 4)],
         name="Search method", default='CLOSEST')
     transfer_shape_as_key: bpy.props.BoolProperty(name='transfer as shape key',
                                                   description="做成形态键")
@@ -246,20 +335,19 @@ class Cupcko_rotate_center_switch(bpy.types.Operator):
         use_global_undo = context.preferences.edit.use_global_undo
         context.preferences.edit.use_global_undo = False
         try:
-            _rotate_center_on()
+            if bpy.context.preferences.inputs.use_mouse_depth_navigate:
+                bpy.context.preferences.inputs.use_mouse_depth_navigate = 0
+            else:
+                bpy.context.preferences.inputs.use_mouse_depth_navigate = 1
         finally:
             context.preferences.edit.use_global_undo = use_global_undo
             print(bpy.context.preferences.inputs.use_mouse_depth_navigate)
         return {'FINISHED'}
 
 
-def _rotate_center_on():
-    bpy.context.preferences.inputs.use_mouse_depth_navigate = True
-
-
-class Cupcko_rotate_center_switch2(bpy.types.Operator):
-    bl_idname = "cup.depth_off"
-    bl_label = "取消深度"
+class Cupcko_3button_mouse_switch(bpy.types.Operator):
+    bl_idname = "cup.3button_mouse_switch"
+    bl_label = "切换模拟三键鼠标"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
@@ -271,15 +359,14 @@ class Cupcko_rotate_center_switch2(bpy.types.Operator):
         use_global_undo = context.preferences.edit.use_global_undo
         context.preferences.edit.use_global_undo = False
         try:
-            _rotate_center_off()
+            if bpy.context.preferences.inputs.use_mouse_emulate_3_button:
+                bpy.context.preferences.inputs.use_mouse_emulate_3_button = 0
+            else:
+                bpy.context.preferences.inputs.use_mouse_emulate_3_button = 1
         finally:
             context.preferences.edit.use_global_undo = use_global_undo
-            print(bpy.context.preferences.inputs.use_mouse_depth_navigate)
+
         return {'FINISHED'}
-
-
-def _rotate_center_off():
-    bpy.context.preferences.inputs.use_mouse_depth_navigate = False
 
 
 class Cupcko_annotate_surface(bpy.types.Operator):
@@ -748,8 +835,9 @@ classes = [
     Cupcko_cs_group_orgnize,
 
     Cupcko_Language_switch,
+    Cupcko_3button_mouse_switch,
     Cupcko_rotate_center_switch,
-    Cupcko_rotate_center_switch2,
+
     Cupcko_annotate_surface,
     Cupcko_rotate_method_switch,
     flatten_uv.Dupulicate_mesh_aply_key,
@@ -761,7 +849,40 @@ classes = [
     cupcko_camera_driver.Camera_Driver,
     ApylyModiWithShapekey,
     Cupcko_fix_vertex_mirroring,
+
 ]
+
+
+class SNA_AddonPreferences_6C2B8(bpy.types.AddonPreferences):
+    bl_idname = 'Cupcko'
+
+    def draw(self, context):
+        if not (False):
+            layout = self.layout
+            box_4B933 = layout.box()
+            box_4B933.alert = False
+            box_4B933.enabled = True
+            box_4B933.active = True
+            box_4B933.use_property_split = False
+            box_4B933.use_property_decorate = False
+            box_4B933.alignment = 'Right'.upper()
+            box_4B933.scale_x = 1.0
+            box_4B933.scale_y = 1.1380000114440918
+            box_4B933.operator_context = "INVOKE_DEFAULT" if True else "EXEC_DEFAULT"
+            grid_7B5B9 = box_4B933.grid_flow(columns=6, row_major=False, even_columns=False, even_rows=False,
+                                             align=True)
+            grid_7B5B9.enabled = True
+            grid_7B5B9.active = True
+            grid_7B5B9.use_property_split = False
+            grid_7B5B9.use_property_decorate = False
+            grid_7B5B9.alignment = 'Expand'.upper()
+            grid_7B5B9.scale_x = 1.0
+            grid_7B5B9.scale_y = 1.0
+            grid_7B5B9.operator_context = "INVOKE_DEFAULT" if True else "EXEC_DEFAULT"
+            op = grid_7B5B9.operator('sn.dummy_button_operator', text='深度', icon_value=0, emboss=True, depress=False)
+            op = grid_7B5B9.operator('sn.dummy_button_operator', text='深度', icon_value=0, emboss=True, depress=False)
+            op = grid_7B5B9.operator('sn.dummy_button_operator', text='深度', icon_value=0, emboss=True, depress=False)
+            op = grid_7B5B9.operator('sn.dummy_button_operator', text='深度', icon_value=0, emboss=True, depress=False)
 
 
 def register():
@@ -772,6 +893,7 @@ def register():
     bpy.types.DATA_PT_shape_keys.append(Cupcko_shape_keys_driver.draw)
     bpy.types.DATA_PT_modifiers.append(sna_add_to_data_pt_modifiers_E5089)
     bpy.types.Object.cupcko_mesh_transfer_object = PointerProperty(type=Meshdata_Settings)
+    bpy.utils.register_class(SNA_AddonPreferences_6C2B8)
 
 
 def unregister():
@@ -782,6 +904,7 @@ def unregister():
     bpy.types.DATA_PT_shape_keys.remove(Cupcko_shape_keys_driver.draw)
     bpy.types.DATA_PT_modifiers.remove(sna_add_to_data_pt_modifiers_E5089)
     del bpy.types.Object.cupcko_mesh_transfer_object
+    bpy.utils.unregister_class(SNA_AddonPreferences_6C2B8)
 
 
 if __name__ == "__main__":

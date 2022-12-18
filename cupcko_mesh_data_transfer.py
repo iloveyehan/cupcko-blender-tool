@@ -33,6 +33,8 @@ class MeshData:
         if self.mesh.shape_keys:
             return self.mesh.shape_keys.key_blocks
             # vertex_groups返回传入物体的顶点组属性
+        else:
+            return None
 
     @property
     def vertex_groups(self):
@@ -178,19 +180,28 @@ class MeshData:
         if self.shape_keys is None:
             print('no shapekey')
             return
-        values = {}
-        for sk in self.shape_keys:
-            values[sk.name] = sk.value
-        return values
+        if len(self.shape_keys) >= 2:
+            values = {}
+            for sk in self.shape_keys:
+                values[sk.name] = sk.value
+            return values
 
     def set_shape_keys_values(self, values):
-        for i in range(len(values)):
-            self.shape_keys[i].value = values[i]
+        if self.shape_keys is None :
+            print('no shapekey')
+            return
+        if len(self.shape_keys)>=2:
+            for i in range(len(values)):
+                self.shape_keys[i].value = values[i]
 
     def reset_shape_keys_values(self):
-        for sk in self.shape_keys:
-            if sk.name != "Basis":
-                sk.value = 0
+        if self.shape_keys is None:
+            print('no shapekey')
+            return
+        if len(self.shape_keys) >= 2:
+            for sk in self.shape_keys:
+                if sk.name != "Basis" and sk.name != "basis" and sk.name != "基型":
+                    sk.value = 0
 
     def set_verts_position(self, co):
         self.mesh.vertices.foreach_set("co", co.ravel())
@@ -234,7 +245,7 @@ class MeshData:
                 bm.transform(self.obj.matrix_world)
             bm.verts.ensure_lookup_table()
             return bm
-        else:
+        elif self.symmetry_axis[-1:]=='X':
             mesh = None
             # 读取初始化状态
             if deformed:
@@ -318,7 +329,7 @@ class MeshData:
                 # 构建bvhtree
             # 用于几何体上的邻近搜索和光线投射的 BVH 树结构
             self.bvhtree = BVHTree.FromBMesh(self.transfer_bmesh)
-        else:
+        elif self.symmetry_axis[-1:] == 'X':
             # 读取初始化参数
             mesh = self.generate_bmesh(self.deformed, self.world_space)
             size = len(mesh.vertices)
@@ -522,7 +533,7 @@ class MeshDataTransfer:
                     self.ray_casted[v_id] = v.co
             print('toushe', self.ray_casted)
             return self.ray_casted, self.hit_faces, self.related_ids
-        else:
+        elif self.symmetry_axis[-1:] == 'X':
             pass
             # self.vertex_map={}
             for v in self.thisobj.mesh.vertices:
@@ -571,7 +582,7 @@ class MeshDataTransfer:
         # 取得采样网格顶点矩阵
             transfer_coord = self.source.get_verts_position()
             transferred_position = self.get_transferred_vert_coords(transfer_coord)
-        else:
+        elif self.symmetry_axis[-1:] == 'X':
             # co=np.zeros(len(self.thisobj.vertex_map)*3,dtype=np.float32)
             # co.shape=(len(self.thisobj.vertex_map),3)
             transferred_position=np.array([self.thisobj.vertex_map[i] for i in self.thisobj.vertex_map])

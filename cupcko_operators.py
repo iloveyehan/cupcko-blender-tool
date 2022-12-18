@@ -99,7 +99,8 @@ class TransferShapeData(bpy.types.Operator):
         sample_space = context.object.cupcko_mesh_transfer_object.mesh_object_space
         return context.active_object is not None \
                and context.active_object.cupcko_mesh_transfer_object.mesh_shape_get_from_this is not None \
-               and sample_space != "TOPOLOGY" and bpy.context.object.mode == "OBJECT"
+               and sample_space != "TOPOLOGY" and bpy.context.object.mode == "OBJECT" \
+               and context.active_object.cupcko_mesh_transfer_object.search_method[-1:]!='X'
 
     def execute(self, context):
         '''
@@ -142,7 +143,8 @@ class TransferUV(bpy.types.Operator):
     def poll(cls, context):
         return context.active_object is not None \
                and context.active_object.cupcko_mesh_transfer_object.mesh_shape_get_from_this is not None \
-               and bpy.context.object.mode == "OBJECT"
+               and bpy.context.object.mode == "OBJECT" \
+               and context.active_object.cupcko_mesh_transfer_object.search_method[-1:]!='X'
 
     def execute(self, context):
         source = context.object.cupcko_mesh_transfer_object.mesh_shape_get_from_this
@@ -226,28 +228,35 @@ class Cupcko_fix_vertex_mirroring(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return 1
+        return context.active_object.cupcko_mesh_transfer_object.search_method[-1:] == 'X'
 
     def execute(self, context):
-        thisobj = context.active_object
-        source=bpy.data.objects.new('temp_mirror_mesh',thisobj.data.copy())
-        bpy.context.collection.objects.link(source)
-        mod = source.modifiers.new('temp_mirror', 'MIRROR')
-        mod.use_bisect_axis[0] = True
-        mod.merge_threshold = 0.0001
-        mod.bisect_threshold = 0.0001
         a = context.active_object.cupcko_mesh_transfer_object
         mask_vertex_group = a.vertex_group_filter
         invert_mask = a.invert_vertex_group_filter
         world_space = False
-        search_method=a.search_method
-        transfer_modified_source=a.transfer_modified_source
+        search_method = a.search_method
+        transfer_modified_source = a.transfer_modified_source
+
+        thisobj = context.active_object
+        source = bpy.data.objects.new('temp_mirror_mesh', thisobj.data.copy())
+        bpy.context.collection.objects.link(source)
+        mod = source.modifiers.new('temp_mirror', 'MIRROR')
+        mod.use_bisect_axis[0] = True
+        print(search_method[-2:])
+        if  search_method[-2:]=='-X':
+            mod.use_bisect_flip_axis[0] = True
+        mod.merge_threshold = 0.0001
+        mod.bisect_threshold = 0.0001
+
         transfer_data = MeshDataTransfer(source=source, thisobj=thisobj, search_method=search_method,
                                          vertex_group=mask_vertex_group,
                                          invert_vertex_group=invert_mask,
-                                         deformed_source=True, world_space=world_space,symmetry_axis=1)
+                                         deformed_source=True, world_space=world_space, symmetry_axis=search_method)
+        sk_values=transfer_data.thisobj.store_shape_keys_name_value()
+        transfer_data.thisobj.reset_shape_keys_values()
         transferred = transfer_data.fix_mirror_transfer_vertex_position()
-
+        transfer_data.thisobj.set_shape_keys_values(sk_values)
         transfer_data.free()
         bpy.data.objects.remove(source)
 
