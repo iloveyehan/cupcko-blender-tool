@@ -191,8 +191,11 @@ class MeshData:
             print('no shapekey')
             return
         if len(self.shape_keys)>=2:
-            for i in range(len(values)):
-                self.shape_keys[i].value = values[i]
+            a=0
+            for i in values:
+                print(self.shape_keys[i].name)
+                self.shape_keys[a].value = values[i]
+                a=a+1
 
     def reset_shape_keys_values(self):
         if self.shape_keys is None:

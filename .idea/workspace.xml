@@ -8,7 +8,6 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cupcko_mesh_data_transfer.py" beforeDir="false" afterPath="$PROJECT_DIR$/cupcko_mesh_data_transfer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cupcko_operators.py" beforeDir="false" afterPath="$PROJECT_DIR$/cupcko_operators.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -71,7 +70,7 @@
       <workItem from="1670249431257" duration="3911000" />
       <workItem from="1671180759441" duration="4394000" />
       <workItem from="1671195165998" duration="16573000" />
-      <workItem from="1671259178824" duration="37299000" />
+      <workItem from="1671259178824" duration="49089000" />
     </task>
     <servers />
   </component>
