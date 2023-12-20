@@ -192,8 +192,11 @@ class MeshData:
             return
         if len(self.shape_keys)>=2:
             a=0
-            for i in values:
-                print(self.shape_keys[i].name)
+            for i in range(len(values)):
+
+                print(i)
+                # print(self.shape_keys[a].name)
+                # self.shape_keys[a].value = values[i]
                 self.shape_keys[a].value = values[i]
                 a=a+1
 
@@ -580,24 +583,25 @@ class MeshDataTransfer:
 
     def get_projected_vertices_on_source(self):
         '''返回投影在采样网格上的顶点坐标'''
-        transferred_position=None
+        self.transferred_position=None
         if self.symmetry_axis is None:
         # 取得采样网格顶点矩阵
             transfer_coord = self.source.get_verts_position()
-            transferred_position = self.get_transferred_vert_coords(transfer_coord)
+            self.transferred_position = self.get_transferred_vert_coords(transfer_coord)
         elif self.symmetry_axis[-1:] == 'X':
             # co=np.zeros(len(self.thisobj.vertex_map)*3,dtype=np.float32)
             # co.shape=(len(self.thisobj.vertex_map),3)
-            transferred_position=np.array([self.thisobj.vertex_map[i] for i in self.thisobj.vertex_map])
+            self.transferred_position=np.array([self.thisobj.vertex_map[i] for i in self.thisobj.vertex_map])
         undeformed_verts = self.thisobj.get_verts_position()
 
-        transferred_position = np.where(self.missed_projections, undeformed_verts, transferred_position)
+        self.transferred_position = np.where(self.missed_projections, undeformed_verts, self.transferred_position)
         # filtering through vertex
         masked_vertices = self.get_vertices_mask()
         #  print(self.vertex_group)
         if isinstance(masked_vertices, np.ndarray):
-            transferred_position = undeformed_verts + (transferred_position - undeformed_verts) * masked_vertices
-        return transferred_position
+            print("确认有顶点组")
+            self.transferred_position = undeformed_verts + (self.transferred_position - undeformed_verts) * masked_vertices
+        return self.transferred_position
 
     def get_vertices_mask(self):
         """
@@ -613,21 +617,23 @@ class MeshDataTransfer:
     def transfer_vertex_position(self, as_shape_key=False):
         #
         transferred_positon = self.get_projected_vertices_on_source()
-        shape_key_basis = ['Basis', 'basis', '基型']
+        # shape_key_basis = ['Basis', 'basis', '基型']
         if as_shape_key:
             shape_key_name = "{}.transferred".format(self.source.obj.name)
             self.thisobj.set_position_as_shape_key(shape_key_name=shape_key_name, co=transferred_positon, activate=1)
         else:
             # print(self.thisobj.name)
-            # 有时候物体有形态键了，但是想传形状给basis
+            # 有时候物体有形态键了，但是想传形状给形态键
             if not hasattr(self.thisobj.mesh.shape_keys, 'key_blocks'):
 
                 self.thisobj.set_verts_position(transferred_positon)
             else:
-                for i in shape_key_basis:
-
+                #有时候有形态键，分传入basis和传入其他形态键两种情况
+                # for i in shape_key_basis:
+                    sk_name=bpy.context.active_object.active_shape_key.name
                     try:
-                        self.thisobj.mesh.shape_keys.key_blocks[i].data.foreach_set('co', transferred_positon.ravel())
+                        # self.thisobj.mesh.shape_keys.key_blocks[i].data.foreach_set('co', transferred_positon.ravel())
+                        self.thisobj.mesh.shape_keys.key_blocks[sk_name].data.foreach_set('co', transferred_positon.ravel())
                     except:
                         pass
         # 刷新视图

@@ -29,7 +29,7 @@ class ApylyModiWithShapekey(bpy.types.Operator):
         再开启其他修改器
         '''
         if self.mod_name == 'all':
-            print(self.mod_name)
+            # print(self.mod_name)
             # 生成meshdata
             apply_all = MeshData(context.active_object, deformed=True)
 
@@ -48,7 +48,7 @@ class ApylyModiWithShapekey(bpy.types.Operator):
                                                     value=sk_values[sk])
 
         else:
-            print(self.mod_name)
+            # print(self.mod_name)
             mod_temp = bpy.context.active_object.modifiers
             mod_off = {}
             for modi in mod_temp:
