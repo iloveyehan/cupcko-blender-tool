@@ -3,9 +3,9 @@ import bmesh
 # from .mesh_data_transfer import MeshDataTransfer
 from .cupcko_mesh_data_transfer import *
 
-
+#
 class ApylyModiWithShapekey(bpy.types.Operator):
-    '''传递物体形状'''
+    '''应用带形态键的模型的修改器'''
     bl_idname = "cupcko.apply_modi_with_shapekey"
     bl_label = "应用带形态键的模型的修改器"
     bl_options = {'REGISTER', 'UNDO'}
@@ -27,9 +27,16 @@ class ApylyModiWithShapekey(bpy.types.Operator):
         删除所有形态键
         然后应用修改器，然后再传回去
         再开启其他修改器
+        有可能会报错
+        镜像修改器：
+        应用镜像修改器时，有的形态键左右交叉了，造成顶点数不匹配
         '''
         if self.mod_name == 'all':
+
+            print('ApylyModiWithShapekey',self.mod_name)
+
             # print(self.mod_name)
+
             # 生成meshdata
             apply_all = MeshData(context.active_object, deformed=True)
 
@@ -43,9 +50,12 @@ class ApylyModiWithShapekey(bpy.types.Operator):
                 bpy.ops.object.convert(target='MESH')
 
             # 还原形态键
+            # a=0
             for sk in sk_array:
+
                 apply_all.set_position_as_shape_key(shape_key_name=sk, co=sk_array[sk],
                                                     value=sk_values[sk])
+
 
         else:
             # print(self.mod_name)
@@ -62,14 +72,16 @@ class ApylyModiWithShapekey(bpy.types.Operator):
                     bpy.context.active_object.modifiers[modi.name].show_viewport = False
 
             # 生成meshdata
+            obj=bpy.context.active_object
             apply_single = MeshData(context.active_object, deformed=True)
-
+            # apply_single = MeshDataTransfer(source=obj, thisobj=obj,
+            #                                  deformed_source=True)
             # 生成形态键坐标组,形态键值 清单
             sk_array = apply_single.get_shape_keys_vert_pos()
             sk_values = apply_single.store_shape_keys_name_value()
 
             # 删除形态键 应用修改器
-            with bpy.context.temp_override(active_object=apply_single.obj):
+            with bpy.context.temp_override(active_object=obj):
                 bpy.ops.object.shape_key_remove(all=True)
                 bpy.ops.object.modifier_apply(modifier=self.mod_name)
             # 还原形态键
@@ -96,17 +108,19 @@ class TransferShapeData(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        if context.active_object is None:
+            return 0
         sample_space = context.object.cupcko_mesh_transfer_object.mesh_object_space
         return context.active_object is not None \
                and context.active_object.cupcko_mesh_transfer_object.mesh_shape_get_from_this is not None \
-               and sample_space != "TOPOLOGY" and bpy.context.object.mode == "OBJECT" \
+               and sample_space != "TOPOLOGY" and (bpy.context.object.mode == "OBJECT" or bpy.context.object.mode == "SCULPT" ) \
                and context.active_object.cupcko_mesh_transfer_object.search_method[-1:]!='X'
 
     def execute(self, context):
         '''
         先用构建bvh树,然后取得每个顶点击中目标网格的坐标,然后通过这个坐标算出他的重心坐标,就是线性归一的值
         然后用重心坐标乘以目标物体的坐标 就是传递后的坐标
-        
+
         '''
         a = context.active_object.cupcko_mesh_transfer_object
         source = a.mesh_shape_get_from_this
@@ -117,18 +131,78 @@ class TransferShapeData(bpy.types.Operator):
         invert_mask = a.invert_vertex_group_filter
         world_space = False
         deformed_source = a.transfer_modified_source
-        print("ops", deformed_source)
+        print("TransferShapeData ops", deformed_source)
         transfer_data = MeshDataTransfer(thisobj=context.active_object, source=source, uv_space=uv_space,
                                          search_method=search_method, vertex_group=mask_vertex_group,
                                          invert_vertex_group=invert_mask,
                                          deformed_source=deformed_source, world_space=world_space)
         #   transfer_data.source.hitfaces_tri()
         #  transfer_data.thisobj.hitfaces_tri()
+
         transferred = transfer_data.transfer_vertex_position(as_shape_key=as_shape_key)
+
         transfer_data.free()
         if not transferred:
             self.report({'INFO'}, 'Unable to perform the operation')
             return {'CANCELLED'}
+        self.report({'INFO'}, 'Shape transferred')
+        return {'FINISHED'}
+class TransferMultiShapeData(bpy.types.Operator):
+    '''传递物体形状 多个形态键'''
+    bl_idname = "cupcko.transfer_multi_shape_data"
+    bl_label = "传递形状"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        if context.active_object is None:
+            return 0
+        sample_space = context.object.cupcko_mesh_transfer_object.mesh_object_space
+        return context.active_object is not None \
+               and context.active_object.cupcko_mesh_transfer_object.mesh_shape_get_from_this is not None \
+               and sample_space != "TOPOLOGY" and (bpy.context.object.mode == "OBJECT" or bpy.context.object.mode == "SCULPT" ) \
+               and context.active_object.cupcko_mesh_transfer_object.search_method[-1:]!='X'
+
+    def execute(self, context):
+        '''
+        先用构建bvh树,然后取得每个顶点击中目标网格的坐标,然后通过这个坐标算出他的重心坐标,就是线性归一的值
+        然后用重心坐标乘以目标物体的坐标 就是传递后的坐标
+
+        '''
+        a = context.active_object.cupcko_mesh_transfer_object
+
+        source = a.mesh_shape_get_from_this
+        k_v={}
+        if hasattr(source.data.shape_keys, 'key_blocks'):
+            #记录k v
+            for s in source.data.shape_keys.key_blocks:
+                k_v[s.name]=s.value
+                if s.name in ['basis’,‘Basis’,‘基型']:
+                    continue
+                s.value=1
+                as_shape_key = a.transfer_shape_as_key
+                uv_space = True
+                search_method = a.search_method
+                mask_vertex_group = a.vertex_group_filter
+                invert_mask = a.invert_vertex_group_filter
+                world_space = False
+                deformed_source = a.transfer_modified_source
+                print("TransferShapeData ops", deformed_source)
+                transfer_data = MeshDataTransfer(thisobj=context.active_object, source=source, uv_space=uv_space,
+                                                 search_method=search_method, vertex_group=mask_vertex_group,
+                                                 invert_vertex_group=invert_mask,
+                                                 deformed_source=deformed_source, world_space=world_space,sk_name=s.name)
+                #   transfer_data.source.hitfaces_tri()
+                #  transfer_data.thisobj.hitfaces_tri()
+
+                transferred = transfer_data.transfer_vertex_position(as_shape_key=as_shape_key)
+
+                transfer_data.free()
+                if not transferred:
+                    self.report({'INFO'}, 'Unable to perform the operation')
+                    return {'CANCELLED'}
+                context.active_object.data.shape_keys.key_blocks[s.name].value=k_v[s.name]
+                s.value=k_v[s.name]
         self.report({'INFO'}, 'Shape transferred')
         return {'FINISHED'}
 
@@ -178,15 +252,68 @@ class Cupcko_return_selected_obj(bpy.types.Operator):
                 # print(obj.data.total_vert_sel)
                 if obj.data.total_vert_sel > 0:
                     list.append(obj)
-                    print(list)
+                    print('Cupcko_return_selected_obj',list)
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
         for obj in list:
             bpy.data.objects[obj.name].select_set(state=True)
         self.report({'INFO'}, '返回编辑模式顶点所属物体')
         return {'FINISHED'}
+class Cupcko_combine_selected_bone_weights(bpy.types.Operator):
+    '''多选骨骼，合并权重到激活骨骼，删除其他骨骼'''
+    bl_idname = "cupcko.combine_selected_bone_weights"
+    bl_label = "合并骨骼权重，删除其他骨骼"
+    bl_options = {'REGISTER', 'UNDO'}
 
+    @classmethod
+    def poll(cls, context):
+        if context.active_object is None:
+            return 0
+        return bpy.context.object.type=='ARMATURE'
 
+    def execute(self, context):
+        armature = bpy.context.active_object
+        child_obj=armature.children
+        bpy.ops.object.mode_set(mode='POSE')
+        posebone=bpy.context.selected_pose_bones
+
+        active_bone=bpy.context.active_bone
+        #做权重
+        for obj in child_obj:
+            if obj.type=='MESH':
+                meshdata=MeshData(obj)
+                #传入骨骼名称
+                v_count = len(obj.data.vertices)
+                weights = np.zeros(v_count, dtype=np.float32)
+                weights.shape=(v_count, 1)
+                for b in posebone:
+                    print('weight',b.name,type(weights))
+                    if meshdata.get_vertex_group_weights(b.name) is not None:
+
+                        weights +=meshdata.get_vertex_group_weights(b.name)
+                    if b.name==active_bone.name:
+                        continue
+                    if meshdata.vertex_groups.get(b.name):
+                        obj.vertex_groups.remove(obj.vertex_groups[b.name])
+                #拿到最终权重，传入active bone
+                meshdata.set_vertex_group_weights(weights,active_bone.name)
+                meshdata.free_memory()
+        #删骨骼
+        bpy.ops.object.mode_set(mode='EDIT')
+        editbone = bpy.context.selected_editable_bones
+        for b in editbone:
+            if b.name==active_bone.name:
+                continue
+            bpy.context.object.data.edit_bones.remove(b)
+            # with bpy.context.temp_override(active_object=armature,selected_editable_bones=b,active_bone=b):
+            #     bpy.ops.armature.dissolve()
+
+        bpy.ops.object.mode_set(mode='POSE')
+
+        self.report({'INFO'}, '合并完成')
+        return {'FINISHED'}
+#
+#
 class SNA_OT_Hide_Empty(bpy.types.Operator):
     bl_idname = "sna.hide_empty"
     bl_label = "hide_empty"
@@ -228,6 +355,8 @@ class Cupcko_fix_vertex_mirroring(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        if context.active_object is None:
+            return 0
         return context.active_object.cupcko_mesh_transfer_object.search_method[-1:] == 'X'
 
     def execute(self, context):
@@ -239,29 +368,169 @@ class Cupcko_fix_vertex_mirroring(bpy.types.Operator):
         transfer_modified_source = a.transfer_modified_source
 
         thisobj = context.active_object
+        mode_t=thisobj.mode
+        if mode_t!='OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+        #记录修改器
+        modi={}
+        for m in thisobj.modifiers:
+            if m.type == 'MASK':
+                modi[m.name]=m.show_viewport
+                m.show_viewport=0
+
+        #记录形态键value
+        sk_temp=0
+        if hasattr(thisobj.data.shape_keys, 'key_blocks'):
+            show_sk_only=thisobj.show_only_shape_key
+            if thisobj.show_only_shape_key:
+                show_sk_only=thisobj.show_only_shape_key
+                thisobj.show_only_shape_key=0
+
+
+            sk={}
+            for k in thisobj.data.shape_keys.key_blocks:
+                sk[k.name]=k.value
+                if k.name==thisobj.active_shape_key.name:
+                    k.value=1
+                    continue
+                k.value=0
+            sk_temp=1
+
+
         source = bpy.data.objects.new('temp_mirror_mesh', thisobj.data.copy())
         bpy.context.collection.objects.link(source)
         mod = source.modifiers.new('temp_mirror', 'MIRROR')
         mod.use_bisect_axis[0] = True
-        print(search_method[-2:])
+        print('Cupcko_fix_vertex_mirroring',search_method[-2:])
         if  search_method[-2:]=='-X':
             mod.use_bisect_flip_axis[0] = True
-        mod.merge_threshold = 0.0001
-        mod.bisect_threshold = 0.0001
+        mod.merge_threshold = 0.00001
+        mod.bisect_threshold = 0.00001
 
         transfer_data = MeshDataTransfer(source=source, thisobj=thisobj, search_method=search_method,
                                          vertex_group=mask_vertex_group,
                                          invert_vertex_group=invert_mask,
                                          deformed_source=True, world_space=world_space, symmetry_axis=search_method)
-        sk_values=transfer_data.thisobj.store_shape_keys_name_value()
-        transfer_data.thisobj.reset_shape_keys_values()
+        # sk_values=transfer_data.thisobj.store_shape_keys_name_value()
+        # transfer_data.thisobj.reset_shape_keys_values()
         transferred = transfer_data.fix_mirror_transfer_vertex_position()
-        transfer_data.thisobj.set_shape_keys_values(sk_values)
+        # transfer_data.thisobj.set_shape_keys_values(sk_values)
         transfer_data.free()
         bpy.data.objects.remove(source)
+        #还原修改器
+        for m in thisobj.modifiers:
+            if m.type == 'MASK':
+                m.show_viewport=modi[m.name]
+        #还原形态键
+        if sk_temp:
+            for k in thisobj.data.shape_keys.key_blocks:
+                k.value=sk[k.name]
+            thisobj.show_only_shape_key = show_sk_only
 
-        if not transferred:
-            self.report({'INFO'}, 'Unable to perform the operation')
-            return {'CANCELLED'}
+        bpy.ops.object.mode_set(mode=mode_t)
         self.report({'INFO'}, 'Shape transferred')
         return {'FINISHED'}
+def is_metarig(obj):
+    if not (obj and obj.data and obj.type == 'ARMATURE'):
+        return False
+    if 'rig_id' in obj.data:
+        return False
+    for b in obj.pose.bones:
+        if b.rigify_type != "":
+            return True
+    return False
+class Generate_Rigify_With_WeightBone(bpy.types.Operator):
+    """Generates a rig from the active metarig armature"""
+
+    bl_idname = "pose.rigify_generate_with_weightbone"
+    bl_label = "Rigify Generate Rig"
+    bl_options = {'UNDO'}
+    bl_description = 'Generates a rig from the active metarig armature'
+
+    @classmethod
+    def poll(cls, context):
+        return is_metarig(context.object)
+
+    def execute(self, context):
+        bpy.ops.pose.rigify_generate()
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+        print(context.selected_objects)
+        print(context.object)
+        context.selected_objects[0].data.layers[29] = True
+
+
+        return {'FINISHED'}
+class Cupcko_turn_off_allshapekeys(bpy.types.Operator):
+    """关闭所有形态键"""
+
+    bl_idname = "cupcko.turn_off_allshapekeys"
+    bl_label = "关闭所有形态键"
+    bl_options = {'UNDO'}
+    bl_description = '关闭所有形态键'
+
+    @classmethod
+    def poll(cls, context):
+        return 1
+
+    def execute(self, context):
+        for obj in context.selected_objects:
+            if obj.type=="MESH":
+                if obj.data.shape_keys:
+                    for sk in obj.data.shape_keys.key_blocks:
+                        sk.value=0
+
+        return {'FINISHED'}
+class Cupcko_unify_objdata_name(bpy.types.Operator):
+    """整理模型场景，重命名obj.data与模型保持一致，为模型和材质添加obj前缀"""
+
+    bl_idname = "cupcko.unify_objdata_name"
+    bl_label = "统一所有obj和data的名字,为材质添加obj前缀,清理未使用的图片"
+    bl_options = {'UNDO'}
+    bl_description = '整理模型场景，重命名obj.data与模型保持一致，为模型和材质添加obj前缀,清理未使用的图片'
+
+    @classmethod
+    def poll(cls, context):
+        return 1
+
+    def execute(self, context):
+        active_obj=bpy.context.active_object
+        for obj in context.scene.objects:
+            if obj.type=="MESH":
+                if obj.name[:4]!='obj_':
+                    obj.name='obj_'+obj.name
+                obj.data.name=obj.name
+                #材质
+                obj.select_set(True)
+                bpy.context.view_layer.objects.active = obj
+                bpy.ops.object.mode_set(mode='OBJECT')
+                bpy.ops.object.material_slot_remove_unused()
+
+                for m in obj.material_slots:
+                    if m.material is None:
+                        continue
+                    if m.material.name[:4] != 'obj_':
+                        m.material.name='obj_'+m.material.name
+                obj.select_set(False)
+        mat_names=[]
+        for mat in bpy.data.materials:
+            mat_names.append(mat.name)
+
+        material=bpy.data.materials
+        for name in mat_names:
+            if mat.name[:4]!='obj_':
+                bpy.data.materials.remove(material[name])
+                continue
+            if material[name].use_nodes:
+                nodes = material[name].node_tree.nodes
+                for node in nodes:
+                    if node.type == 'TEX_IMAGE' and not node.outputs[0].links:
+                        nodes.remove(node)
+                    elif node.type=='TEX_IMAGE' and node.image:
+                        node.image.name='obj_'+node.image.name
+            material[name].name=material[name].name[4:]
+        if active_obj:
+            bpy.context.view_layer.objects.active = active_obj
+        return {'FINISHED'}
+

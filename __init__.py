@@ -4,22 +4,27 @@ mesh transfer部分参考了Maurizio Memoli的meshdatatransfer
 import bpy
 from bpy import context
 from bpy.props import PointerProperty
+# from numpy import inf
 import bpy.utils
 import sys
 import os
 from .cupcko_operators import *
+from .cupcko_uv_operators import *
+from .cupcko_material_operators import *
+from .cupcko_vg_ops import *
 from . import flatten_uv
 from . import cupcko_camera_driver
+
 from .cupcko_mesh_data_transfer import *
 
-if sys.platform == 'win32': os.system('chcp 65001')
+# if sys.platform == 'win32': os.system('chcp 65001')
 
-import importlib
+# import importlib
 
-importlib.reload(flatten_uv)
-importlib.reload(cupcko_mesh_data_transfer)
-importlib.reload(cupcko_operators)
-importlib.reload(cupcko_camera_driver)
+# importlib.reload(flatten_uv)
+# importlib.reload(cupcko_mesh_data_transfer)
+# importlib.reload(cupcko_operators)
+# importlib.reload(cupcko_camera_driver)
 
 bl_info = {
     "name": "cupcko",
@@ -62,7 +67,6 @@ class Cupcko_Panel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "Item"
-
     @classmethod
     def poll(cls, context):
         return (context.object is not None)
@@ -290,14 +294,30 @@ class VIEW3D_HT_Language(bpy.types.Header):
                 else:
                     row1.operator(Cupcko_rotate_method_switch.bl_idname, text='当前:转盘')
 
-
+# class Init_settings():
+#     def __init__(self):
+#         self.zh_CN=self.detect_language()
+#     def detect_language(self):
+#         if bpy.app.version[0]==3:
+#             return 'zh_CN'
+#         elif bpy.app.version[0]>3:
+#             return 'zh_HANS'
+# setting=Init_settings()
 def _language_switch():
     context_language = bpy.context.preferences.view.use_translate_interface
     view_l = bpy.context.preferences.view.language
-    if view_l != 'DEFAULT':
-        bpy.context.preferences.view.language = 'DEFAULT'
-        bpy.context.preferences.view.use_translate_new_dataname = 0
+    if view_l not in ['zh_CN','zh_HANS']:
+        #如果当前不是中文
+        try:
+            bpy.context.preferences.view.language = 'zh_CN'
+        except:
+            bpy.context.preferences.view.language = 'zh_HANS'
+        bpy.context.preferences.view.use_translate_new_dataname = False
     else:
+        try:
+            bpy.context.preferences.view.language='en_US'
+        except:
+            pass
         if context_language:
             bpy.context.preferences.view.use_translate_interface = False
         elif context_language == False:
@@ -356,7 +376,7 @@ class Cupcko_rotate_center_switch(bpy.types.Operator):
                 bpy.context.preferences.inputs.use_mouse_depth_navigate = 1
         finally:
             context.preferences.edit.use_global_undo = use_global_undo
-            print(bpy.context.preferences.inputs.use_mouse_depth_navigate)
+            print('Cupcko_rotate_center_switch',bpy.context.preferences.inputs.use_mouse_depth_navigate)
         return {'FINISHED'}
 
 
@@ -550,7 +570,9 @@ class Cupcko_cs_group_orgnize(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        # context.mode == 'OBJECT' 
+        # context.mode == 'OBJECT'
+        if context.active_object is None:
+            return 0
         if bpy.context.object.type == 'ARMATURE':
             return True
 
@@ -711,18 +733,18 @@ def get_bone_side(bone_name):
         if bone_side in bone_name:
             n = bone_name.index(bone_side)
             length = len(bone_name)
-            print('长度=', length)
-            print('name序号=', n)
+            # print('长度=', length)
+            # print('name序号=', n)
             i = mirror_char_in.index(bone_side)
             bone_side_mir = mirror_char_ot[i]
-            print(bone_name[n:])
+            # print(bone_name[n:])
 
             # if n+2<length and n-1>0:
 
             if n == 0:
                 # 名称前置型骨骼
                 mirror_bone_name = "".join((bone_side, bone_name))
-                print('名称前置型骨骼=' + mirror_bone_name)
+                # print('名称前置型骨骼=' + mirror_bone_name)
 
             if n + 2 < length:
                 if bone_name[n + 2] == '.' or bone_name[n + 2] == '_' or bone_name[n - 1] == '.' or bone_name[
@@ -732,15 +754,15 @@ def get_bone_side(bone_name):
                     split = bone_name.split(bone_side)
                     mirror_bone_name = "".join((split[0], bone_side_mir, split[1]))
                     # mirror_bone_name=split[0]+bone_side_mir+split[1]
-                    print('名称中间型骨骼=' + mirror_bone_name)
+                    # print('名称中间型骨骼=' + mirror_bone_name)
             # return(mirror_bone_name)
 
             elif bone_side == bone_name[-2:]:
                 # 名称后置型骨骼
                 mirror_bone_name = "".join((bone_name[:-2], bone_side_mir))
                 # mirror_bone_name=bone_name[:-2]+bone_side_mir
-                print('名称后置型骨骼=' + mirror_bone_name)
-                print('bone_name=' + bone_name[-2:])
+                # print('名称后置型骨骼=' + mirror_bone_name)
+                # print('bone_name=' + bone_name[-2:])
             # return(mirror_bone_name)
     return (mirror_bone_name)
 
@@ -841,31 +863,47 @@ class Cupcko_shape_keys_driver(bpy.types.Panel):
 from . import cupcko_node_add
 
 classes = [
-    SNA_OT_Hide_Empty,
-    cupcko_node_add.Cupcko_add_NdotL,
-    flatten_uv.Create_flat_mesh,
-    Cupcko_Panel,
-    Cupcko_edit_custom_shape,
-    Cupcko_mirror_custom_shape,
-    Cupcko_exit_edit_shape,
-    Cupcko_cs_group_orgnize,
+SNA_OT_Hide_Empty,
+cupcko_node_add.Cupcko_add_NdotL,
+flatten_uv.Create_flat_mesh,
+Cupcko_Panel,
+Cupcko_edit_custom_shape,
+Cupcko_mirror_custom_shape,
+Cupcko_exit_edit_shape,
+Cupcko_cs_group_orgnize,
 
-    Cupcko_Language_switch,
-    Cupcko_3button_mouse_switch,
-    Cupcko_rotate_center_switch,
+Cupcko_Language_switch,
+Cupcko_3button_mouse_switch,
+Cupcko_rotate_center_switch,
 
-    Cupcko_annotate_surface,
-    Cupcko_rotate_method_switch,
-    flatten_uv.Dupulicate_mesh_aply_key,
-    Cupcko_return_selected_obj,
-    Meshdata_Settings,
-    TransferUV,
-    TransferShapeData,
-    ExampleAddonPreferences,
-    cupcko_camera_driver.Camera_Driver,
-    ApylyModiWithShapekey,
-    Cupcko_fix_vertex_mirroring,
+Cupcko_annotate_surface,
+Cupcko_rotate_method_switch,
+flatten_uv.Dupulicate_mesh_aply_key,
+Cupcko_return_selected_obj,
+Meshdata_Settings,
+TransferUV,
+TransferShapeData,
+ExampleAddonPreferences,
+cupcko_camera_driver.Camera_Driver,
+ApylyModiWithShapekey,
+Cupcko_fix_vertex_mirroring,
+Cupcko_combine_selected_bone_weights,
+TransferMultiShapeData,
+Cupcko_uv_unify_uv_name,
+Cupcko_uv_unify_uv_name_for_bake,
+Cupcko_uv_set_bake_active,
+Cupcko_uv_set_bake_uv,
+Cupcko_mt_clear_unused_material,
+Cupcko_mt_fix_view_material_metal,
+Cupcko_turn_off_allshapekeys,
+Cupcko_unify_objdata_name,
+Cupcko_vg_metarig_to_rig,
+Cupcko_vg_rig_to_metarig,
+Cupcko_vg_clear_unused,
+Cupcko_vg_remove_zero,
 
+Cupcko_vg_mirror_weight,
+Cupcko_vg_symmetry_weight,
 ]
 
 
@@ -899,8 +937,15 @@ class SNA_AddonPreferences_6C2B8(bpy.types.AddonPreferences):
             op = grid_7B5B9.operator('sn.dummy_button_operator', text='深度', icon_value=0, emboss=True, depress=False)
             op = grid_7B5B9.operator('sn.dummy_button_operator', text='深度', icon_value=0, emboss=True, depress=False)
             op = grid_7B5B9.operator('sn.dummy_button_operator', text='深度', icon_value=0, emboss=True, depress=False)
-
-
+def show_console(self, context):
+    if not (False):
+        layout = self.layout
+        op = layout.operator('wm.console_toggle', text='输出', icon_value=0, emboss=True, depress=False)
+#插入rigify
+def sna_add_to_data_pt_rigify_0066A(self, context):
+    if not (False):
+        layout = self.layout
+        op = layout.operator('pose.rigify_generate_with_weightbone', text='生成rigify显示权重骨', icon_value=0, emboss=True, depress=False)
 def register():
     from bpy.utils import register_class
     for c in classes:
@@ -909,7 +954,12 @@ def register():
     bpy.types.DATA_PT_shape_keys.append(Cupcko_shape_keys_driver.draw)
     bpy.types.DATA_PT_modifiers.append(sna_add_to_data_pt_modifiers_E5089)
     bpy.types.Object.cupcko_mesh_transfer_object = PointerProperty(type=Meshdata_Settings)
+    if "rigify" in bpy.context.preferences.addons:
+        bpy.utils.register_class(Generate_Rigify_With_WeightBone)
+        bpy.types.DATA_PT_rigify.append(sna_add_to_data_pt_rigify_0066A)
     bpy.utils.register_class(SNA_AddonPreferences_6C2B8)
+    bpy.types.TOPBAR_MT_editor_menus.append(show_console)
+    bpy.types.DATA_PT_vertex_groups.append(sna_add_to_data_pt_vertex_groups_4A52F)
 
 
 def unregister():
@@ -920,7 +970,12 @@ def unregister():
     bpy.types.DATA_PT_shape_keys.remove(Cupcko_shape_keys_driver.draw)
     bpy.types.DATA_PT_modifiers.remove(sna_add_to_data_pt_modifiers_E5089)
     del bpy.types.Object.cupcko_mesh_transfer_object
+    if "rigify" in bpy.context.preferences.addons:
+        bpy.utils.unregister_class(Generate_Rigify_With_WeightBone)
+        bpy.types.DATA_PT_rigify.remove(sna_add_to_data_pt_rigify_0066A)
     bpy.utils.unregister_class(SNA_AddonPreferences_6C2B8)
+    bpy.types.TOPBAR_MT_editor_menus.remove(show_console)
+    bpy.types.DATA_PT_vertex_groups.remove(sna_add_to_data_pt_vertex_groups_4A52F)
 
 
 if __name__ == "__main__":

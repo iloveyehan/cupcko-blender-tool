@@ -1,6 +1,21 @@
 import bpy
 import re
-namespace=''
+
+namespace = ''
+
+'''
+镜像骨骼名字'''
+for a in bpy.context.object.data.bones:
+    # print(a.name)
+    if re.search(r'right', a.name, re.I | re.M):
+        a.name = re.search(r'(.*)right(.*)', a.name, re.I | re.M).group(1) + re.search(r'(.*)right(.*)', a.name,
+                                                                                       re.I | re.M).group(2) + '.r'
+    #        print(searchObj1)
+    if re.search(r'left', a.name, re.I | re.M):
+        a.name = re.search(r'(.*)left(.*)', a.name, re.I | re.M).group(1) + re.search(r'(.*)left(.*)', a.name,
+                                                                                      re.I | re.M).group(2) + '.l'
+#        print(searchObj2)
+#    print(searchObj1,searchObj2)
 for a in bpy.context.object.data.bones:
     # print(a.name)
     if re.search(r'rigref', a.name, re.I | re.M):
@@ -34,7 +49,7 @@ for  a in bpy.context.selectable_objects:
         active=a
         continue
         obj=a
-for b in a.data.edit_bones:
+for b in bpy.context.object.data.edit_bones:
     for obj_b in obj.data.edit_bones:
         if b.name==obj_b.name:
             obj_b.head=b.head

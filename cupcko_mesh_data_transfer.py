@@ -24,6 +24,7 @@ class MeshData:
         self.transfer_bmesh = None  # 用做临时mesh,适时释放内存
 
         self.vertex_map = {}
+        # self.vertex_maps=[]
         # uv_vertices到mesh vert id的对应映射
 
     # def free(self):
@@ -118,6 +119,7 @@ class MeshData:
                     weights[v_index] = weight
                     # 存储顶点权重
         weights.shape = (v_count, 1)
+        print('group',vertex_group_name,type(weights))
         return weights
 
     def get_vertex_groups_weights(self, ignore_locked=False):
@@ -162,11 +164,31 @@ class MeshData:
             for v_id in v_ids:
                 value = group_weights[v_id]
                 # 取得 每个顶点的权重
-                v_group.add(int(v_id), value, "REPLACE")
+                v_group.add((int(v_id),), value, "REPLACE")
                 # add()
                 # VertexGroup.add(index, weight, type)  type: SUBTRACT ADD REPLACE
                 # Add vertices to the group
-
+    def set_vertex_group_weights(self, weights, group_name):
+        # 清除所有大小为0的权重
+        # for i in range(weights.shape[0]):
+        #     # remove existing vertex group
+        #     group_name = group_names[i]
+            v_group = self.vertex_groups.get(group_name)
+            if v_group:
+                self.vertex_groups.remove(v_group)
+            group_weights = weights
+            # 取得第一组顶点组的所有顶点权重
+            v_ids = np.nonzero(group_weights)[0]
+            # 拿到第一组顶点组的所有顶点权重的非0权重的索引
+            v_group = self.obj.vertex_groups.new(name=group_name)
+            # 实现 一个 清除顶点组内0权重的顶点  方法
+            for v_id in v_ids:
+                value = group_weights[v_id]
+                # 取得 每个顶点的权重
+                v_group.add((int(v_id),), value, "REPLACE")
+                # add()
+                # VertexGroup.add(index, weight, type)  type: SUBTRACT ADD REPLACE
+                # Add vertices to the group
     def store_shape_keys_value(self):
         if self.shape_keys is None:
             print('no shapekey')
@@ -194,6 +216,11 @@ class MeshData:
             a=0
             for i in range(len(values)):
 
+                print('set_shape_keys_values:',self.shape_keys[i].name)
+                if a==0:
+                    continue
+
+
                 print(i)
                 # print(self.shape_keys[a].name)
                 # self.shape_keys[a].value = values[i]
@@ -215,15 +242,20 @@ class MeshData:
 
     def set_position_as_shape_key(self, shape_key_name="Data_transfer", co=None, activate=False, value=0):
         '''传入形态键名字,形变顶点组,value'''
+
         # 先判断是否有形态键
+        sk=0
         if not self.shape_keys:
-            self.obj.shape_key_add(name="Basis")
+            sk=self.obj.shape_key_add(name="Basis")
 
         # 新建接收形变的形态键
-        sk = self.obj.shape_key_add(name=shape_key_name)
+        # else:
+        if shape_key_name not in ['basis','基型','Basis']:
+            sk = self.obj.shape_key_add(name=shape_key_name)
 
         # 传入新形态键的顶点数据
         sk.data.foreach_set("co", co.ravel())  # 传入(属性,序列)
+        #应用镜像修改器，如果报错 说明形变后有顶点交叉过x=0
         # 检测初始状态
         sk.value = value
         if activate:
@@ -232,8 +264,9 @@ class MeshData:
     def generate_bmesh(self, deformed=True, world_space=True):
         '''获取物体的bmesh
         如果采集修改器,返回应用修改器后的bmesh'''
+        bm = bmesh.new()
         if self.symmetry_axis is None:
-            bm = bmesh.new()
+
             # 读取初始化状态
             if deformed:
                 depsgraph = bpy.context.evaluated_depsgraph_get()
@@ -247,7 +280,7 @@ class MeshData:
                 mesh = self.obj.to_mesh()
                 bm.from_mesh(mesh)
             if world_space:
-                print(world_space)
+                print('generate_bmesh',world_space)
                 bm.transform(self.obj.matrix_world)
             bm.verts.ensure_lookup_table()
             return bm
@@ -259,15 +292,20 @@ class MeshData:
                 # 更新依赖图
                 obj_eval = self.obj.evaluated_get(depsgraph)
                 mesh = obj_eval.to_mesh()
+                bm.from_mesh(mesh)
+                obj_eval.to_mesh_clear()
                 # 获取修改器啥的数据
                 # obj_eval.to_mesh_clear()
+                print(f'返回{self.obj.name} deformed bm')
             else:
                 mesh = self.obj.to_mesh()
+                print(f'返回{self.obj.name} 未deformed bm')
+                bm.from_mesh(mesh)
             # if world_space:
             # print(world_space)
             # bm.transform(self.obj.matrix_world)
 
-            return mesh
+            return bm
 
     def get_mesh_data(self):
         """用网格的三角形版本构建BVHTree  
@@ -279,6 +317,10 @@ class MeshData:
         构建bvhtree"""
         if self.symmetry_axis is None:
             # 读取初始化参数
+            if  self.shape_keys:
+                if self.obj.active_shape_key is not None:
+                    if self.obj.active_shape_key_index!=0 and self.obj.active_shape_key.value==1 :
+                        self.deformed=1
             bm = self.generate_bmesh(self.deformed, self.world_space)
 
             if self.uv_space:
@@ -337,15 +379,19 @@ class MeshData:
             self.bvhtree = BVHTree.FromBMesh(self.transfer_bmesh)
         elif self.symmetry_axis[-1:] == 'X':
             # 读取初始化参数
-            mesh = self.generate_bmesh(self.deformed, self.world_space)
-            size = len(mesh.vertices)
+
+            bm = self.generate_bmesh(self.deformed, self.world_space)
+            mesh_temp = bpy.data.meshes.new(name="temp_mesh")
+            bm.to_mesh(mesh_temp)
+            size = len(mesh_temp.vertices)
             kd = mathutils.kdtree.KDTree(size)
 
-            for i, v in enumerate(mesh.vertices):
+            for i, v in enumerate(mesh_temp.vertices):
                 kd.insert(v.co, i)
-
+            bpy.data.meshes.remove(mesh_temp)
             kd.balance()
             self.kdtree = kd
+            print(f'储存{self.obj.name}的kdtree')
 
     def get_shape_keys_vert_pos(self, exclude_muted=False):
         if not self.shape_keys:
@@ -355,16 +401,17 @@ class MeshData:
         stored_values = self.store_shape_keys_value()
         self.reset_shape_keys_values()
         shape_arrays = {}
-        basis = ['Basis', 'basis', '基型']
+        # basis = ['Basis', 'basis', '基型']
         temp_show_only_shape_key = self.obj.show_only_shape_key
         if temp_show_only_shape_key:
             self.obj.show_only_shape_key = 0
 
         for sk in self.shape_keys:
-            if sk.name in basis:
-                continue
+            # if sk.name in basis:
+                # continue
             if sk.mute:
                 continue
+            #转换shape到矩阵
             array = self.convert_shape_key_to_array(sk)
             shape_arrays[sk.name] = array
         self.set_shape_keys_values(stored_values)
@@ -377,6 +424,7 @@ class MeshData:
         if self.deformed:
             shape_key.value = 1
             temp_mesh = bpy.data.meshes.new('mesh')
+            print('储存形态键中..：',shape_key.name)
             temp_bm = self.generate_bmesh(deformed=True, world_space=False)
             temp_bm.to_mesh(temp_mesh)
             verts = temp_mesh.vertices
@@ -402,10 +450,12 @@ class MeshData:
             verts.foreach_get("co", co)
             co.shape = (v_count, 3)
             # 拿到顶点列*xyz坐标矩阵
+            # temp = bpy.data.objects.new('temp_2', temp_mesh)
+            # bpy.context.collection.objects.link(temp)
             bpy.data.meshes.remove(temp_mesh)
             temp_bm.free()
-            print(self.obj.name)
-            print(co)
+            print('get_verts_position',self.obj.name)
+            # print(co)
             return co
         v_count = len(self.mesh.vertices)
         co = np.zeros(v_count * 3, dtype=np.float32)
@@ -421,7 +471,7 @@ class MeshDataTransfer:
                  deformed_target=False, world_space=False, search_method="RAYCAST",
                  topolpgy=False, vertex_group=None, invert_vertex_group=False,
                  exclude_locked_groups=False, exclude_muted_shapekeys=False,
-                 snap_to_closest=False, tranfer_divers=False, symmetry_axis=None):
+                 snap_to_closest=False, tranfer_divers=False, symmetry_axis=None,sk_name=None):
         self.deformed_source = deformed_source
         self.search_method = search_method
         self.world_space = world_space
@@ -429,8 +479,11 @@ class MeshDataTransfer:
         self.source = MeshData(source, uv_space=uv_space, deformed=deformed_source, world_space=world_space,
                                symmetry_axis=symmetry_axis)
         self.source.get_mesh_data()
+
         self.thisobj = MeshData(thisobj, uv_space=uv_space, world_space=world_space, symmetry_axis=symmetry_axis)
         self.thisobj.get_mesh_data()
+        self.sk_name=sk_name
+        # print(f'{self.thisobj}',self.thisobj.active_shape_key)
         print('MeshDataTransfer self.world_space', self.world_space)
         self.vertex_group = vertex_group
         self.invert_vertex_group = invert_vertex_group
@@ -500,9 +553,9 @@ class MeshDataTransfer:
                 # v_ids接收此顶点的字典索引内容,里面可能包含多个面循环uv顶点索引
                 if self.search_method == "CLOSEST":
                     projection = self.source.bvhtree.find_nearest(v.co)
-                    print('projection', projection, '|', 'this', v.co)
-                    for v in self.source.transfer_bmesh.faces[projection[2]].verts:
-                        print('v', v.co)
+                    # print('projection', projection, '|', 'this', v.co)
+                    # for v in self.source.transfer_bmesh.faces[projection[2]].verts:
+                        # print('v', v.co)
                     # Vector location, Vector normal, int index, float distance
                     # 返回的是最近的面上的顶点坐标+xxx
                 else:
@@ -537,13 +590,26 @@ class MeshDataTransfer:
                     # 搜锤子  就把自己传进去
                     # for v_id in v_ids:
                     self.ray_casted[v_id] = v.co
-            print('toushe', self.ray_casted)
+            # print('toushe', self.ray_casted)
             return self.ray_casted, self.hit_faces, self.related_ids
         elif self.symmetry_axis[-1:] == 'X':
             pass
             # self.vertex_map={}
-            for v in self.thisobj.mesh.vertices:
+            #如果要修复形态键的镜像，就要读取deformed mesh
+            #做好this obj的形态键顶点图
+            if  self.thisobj.shape_keys:
+                if self.thisobj.obj.active_shape_key_index!=0 and self.thisobj.obj.active_shape_key.value==1:
+                    self.thisobj.deformed=1
+            bm=self.thisobj.generate_bmesh(deformed=self.thisobj.deformed)
+            mesh_temp = bpy.data.meshes.new(name="temp_mesh")
+            bm.to_mesh(mesh_temp)
+            # temp = bpy.data.objects.new('temp_1', mesh_temp)
+            # bpy.context.collection.objects.link(temp)
+            # for v in self.thisobj.mesh.vertices:
+            for v in mesh_temp.vertices:
                 self.thisobj.vertex_map[v.index]=self.source.kdtree.find(v.co)[0]
+            bpy.data.meshes.remove(mesh_temp)
+            print(f'遍历{self.thisobj.obj.name}.vertices，在{self.source.obj.name}.kdtree中找最近点，存入{self.thisobj.obj.name}.vertex_map[v.index]')
 
 
     def free(self):
@@ -583,6 +649,8 @@ class MeshDataTransfer:
 
     def get_projected_vertices_on_source(self):
         '''返回投影在采样网格上的顶点坐标'''
+        transferred_position=None
+
         self.transferred_position=None
         if self.symmetry_axis is None:
         # 取得采样网格顶点矩阵
@@ -591,13 +659,29 @@ class MeshDataTransfer:
         elif self.symmetry_axis[-1:] == 'X':
             # co=np.zeros(len(self.thisobj.vertex_map)*3,dtype=np.float32)
             # co.shape=(len(self.thisobj.vertex_map),3)
+            print('返回未处理的投影在采样网格上的顶点坐标')
+            transferred_position=np.array([self.thisobj.vertex_map[i] for i in range(len(self.thisobj.vertex_map))])
+
             self.transferred_position=np.array([self.thisobj.vertex_map[i] for i in self.thisobj.vertex_map])
+
         undeformed_verts = self.thisobj.get_verts_position()
 
         self.transferred_position = np.where(self.missed_projections, undeformed_verts, self.transferred_position)
         # filtering through vertex
         masked_vertices = self.get_vertices_mask()
         #  print(self.vertex_group)
+
+        # if isinstance(masked_vertices, np.ndarray):
+        #     print('检测到遮罩')
+        #     transferred_position = undeformed_verts + (transferred_position - undeformed_verts) * masked_vertices
+        if isinstance(masked_vertices, (np.ndarray, np.generic)):
+            print('检测到遮罩')
+            delta = transferred_position - undeformed_verts
+            delta = delta * masked_vertices
+            transferred_position = undeformed_verts + delta
+        print('返回投影在采样网格上的顶点坐标')
+        return transferred_position
+
         if isinstance(masked_vertices, np.ndarray):
             print("确认有顶点组")
             self.transferred_position = undeformed_verts + (self.transferred_position - undeformed_verts) * masked_vertices
@@ -609,6 +693,7 @@ class MeshDataTransfer:
         :return:
         """
         if self.vertex_group:
+            print(self.vertex_group)
             v_group = self.thisobj.get_vertex_group_weights(self.vertex_group)
             if self.invert_vertex_group:
                 v_group = 1.0 - v_group
@@ -619,23 +704,40 @@ class MeshDataTransfer:
         transferred_positon = self.get_projected_vertices_on_source()
         # shape_key_basis = ['Basis', 'basis', '基型']
         if as_shape_key:
-            shape_key_name = "{}.transferred".format(self.source.obj.name)
-            self.thisobj.set_position_as_shape_key(shape_key_name=shape_key_name, co=transferred_positon, activate=1)
+            if self.sk_name==None:
+                self.sk_name = "{}.transferred".format(self.source.obj.name)
+            self.thisobj.set_position_as_shape_key(shape_key_name=self.sk_name, co=transferred_positon, activate=1)
         else:
             # print(self.thisobj.name)
-            # 有时候物体有形态键了，但是想传形状给形态键
-            if not hasattr(self.thisobj.mesh.shape_keys, 'key_blocks'):
 
-                self.thisobj.set_verts_position(transferred_positon)
+            # 有时候物体有形态键了，但是想传形状给形态键
+            # if not hasattr(self.thisobj.mesh.shape_keys, 'key_blocks'):
+            if hasattr(self.thisobj.mesh.shape_keys, 'key_blocks'):
+                # 有时候物体有形态键了，但是想传形状给激活形态键
+                # for i in shape_key_basis:
+
+                try:
+                    # self.thisobj.mesh.shape_keys.key_blocks[i].data.foreach_set('co', transferred_positon.ravel())
+                    self.thisobj.obj.active_shape_key.value = 1
+                    print('transfer_vertex_position',self.thisobj.obj.active_shape_key)
+                    self.thisobj.obj.active_shape_key.data.foreach_set('co', transferred_positon.ravel())
+                except:
+                    pass
+
+
             else:
+                # 没有形态键直接传
+                self.thisobj.set_verts_position(transferred_positon)
+
                 #有时候有形态键，分传入basis和传入其他形态键两种情况
                 # for i in shape_key_basis:
-                    sk_name=bpy.context.active_object.active_shape_key.name
-                    try:
-                        # self.thisobj.mesh.shape_keys.key_blocks[i].data.foreach_set('co', transferred_positon.ravel())
-                        self.thisobj.mesh.shape_keys.key_blocks[sk_name].data.foreach_set('co', transferred_positon.ravel())
-                    except:
-                        pass
+                sk_name=bpy.context.active_object.active_shape_key.name
+                try:
+                    # self.thisobj.mesh.shape_keys.key_blocks[i].data.foreach_set('co', transferred_positon.ravel())
+                    self.thisobj.mesh.shape_keys.key_blocks[sk_name].data.foreach_set('co', transferred_positon.ravel())
+                except:
+                    pass
+
         # 刷新视图
         bpy.ops.object.editmode_toggle()
         bpy.ops.object.editmode_toggle()
@@ -644,19 +746,22 @@ class MeshDataTransfer:
     def fix_mirror_transfer_vertex_position(self,as_shape_key=False):
 
         transferred_positon = self.get_projected_vertices_on_source()
-        shape_key_basis = ['Basis', 'basis', '基型']
+        # shape_key_basis = ['Basis', 'basis', '基型']
 
-            # 有时候物体有形态键了，但是想传形状给basis
+            # 有时候物体有形态键了
         if not hasattr(self.thisobj.mesh.shape_keys, 'key_blocks'):
 
             self.thisobj.set_verts_position(transferred_positon)
         else:
-            for s in shape_key_basis:
-
-                try:
-                    self.thisobj.mesh.shape_keys.key_blocks[s].data.foreach_set('co', transferred_positon.ravel())
-                except:
-                    pass
+            print('设置形态键顶点')
+            self.thisobj.obj.active_shape_key.value=1
+            self.thisobj.obj.active_shape_key.data.foreach_set('co', transferred_positon.ravel())
+            # for s in shape_key_basis:
+            #
+            #     try:
+            #         self.thisobj.mesh.shape_keys.key_blocks[s].data.foreach_set('co', transferred_positon.ravel())
+            #     except:
+            #         pass
         # 刷新视图
         bpy.ops.object.editmode_toggle()
         bpy.ops.object.editmode_toggle()

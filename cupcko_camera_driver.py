@@ -39,6 +39,8 @@ class Camera_Driver(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        if context.active_object is None:
+            return 0
         return bpy.context.object.data.shape_keys != None
 
     def execute(self, context):
