@@ -713,7 +713,7 @@ class MeshDataTransfer:
     def transfer_vertex_position(self, as_shape_key=False):
         #
         transferred_positon = self.get_projected_vertices_on_source()
-        print('输出投射后顶点0:',self.get_projected_vertices_on_source())
+        # print('输出投射后顶点0:',self.get_projected_vertices_on_source())
         # shape_key_basis = ['Basis', 'basis', '基型']
         if as_shape_key:
             if self.sk_name==None:
