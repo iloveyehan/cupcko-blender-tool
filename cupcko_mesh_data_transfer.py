@@ -757,7 +757,7 @@ class MeshDataTransfer:
         return 1
     def fix_mirror_transfer_vertex_position(self,as_shape_key=False):
 
-        transferred_positon = self.get_projected_vertices_on_source()[1]
+        transferred_positon = self.get_projected_vertices_on_source()
         # shape_key_basis = ['Basis', 'basis', '基型']
 
             # 有时候物体有形态键了
