@@ -237,6 +237,7 @@ class MeshData:
                     sk.value = 0
 
     def set_verts_position(self, co):
+        print('设置顶点位置到物体顶点:',co)
         self.mesh.vertices.foreach_set("co", co.ravel())
         self.mesh.update()
 
@@ -325,7 +326,11 @@ class MeshData:
 
             if self.uv_space:
                 self.vertex_map = {}
-                uv_layer_name = self.mesh.uv_layers.active.name
+                try:
+                    uv_layer_name = self.mesh.uv_layers.active.name
+                except:
+                    self.report({'ERROR'}, '没有uv')
+                    return {'FINISHED'}
                 uv_id = 0
                 for i, uv in enumerate(self.mesh.uv_layers):
                     # enumerate:传入一个列表,返回索引+列表
@@ -534,11 +539,16 @@ class MeshDataTransfer:
             self.ray_casted = np.zeros(v_count * 3, dtype=np.float32)
             self.ray_casted.shape = (v_count, 3)
             # 自身投影到采样物体上,投影所在面的顶点
-            self.related_ids = np.zeros(v_count * 3, dtype=np.int)
+            try:
+                self.related_ids = np.zeros(v_count * 3, dtype=np.int)
+            except:
+                self.related_ids = np.zeros(v_count * 3, dtype=np.int32)
             '''自身投影到采样物体上,投影所在面的顶点id'''
             self.related_ids.shape = (v_count, 3)
-
-            self.missed_projections = np.ones(v_count * 3, dtype=np.bool)
+            try:
+                self.missed_projections = np.ones(v_count * 3, dtype=np.bool)
+            except:
+                self.missed_projections = np.ones(v_count * 3, dtype=np.bool_)
             self.missed_projections.shape = (v_count, 3)
             # 自身投影到采样物体上,投影所在面的顶点
             self.hit_faces = np.zeros(v_count * 9, dtype=np.float32)
@@ -674,18 +684,19 @@ class MeshDataTransfer:
         # if isinstance(masked_vertices, np.ndarray):
         #     print('检测到遮罩')
         #     transferred_position = undeformed_verts + (transferred_position - undeformed_verts) * masked_vertices
-        if isinstance(masked_vertices, (np.ndarray, np.generic)):
-            print('检测到遮罩')
-            delta = transferred_position - undeformed_verts
-            delta = delta * masked_vertices
-            transferred_position = undeformed_verts + delta
-        print('返回投影在采样网格上的顶点坐标')
-        return transferred_position
+        # if isinstance(masked_vertices, (np.ndarray, np.generic)):
+        #     print('检测到遮罩')
+        #     delta = transferred_position - undeformed_verts
+        #     delta = delta * masked_vertices
+        #     transferred_position = undeformed_verts + delta
+        # print('返回投影在采样网格上的顶点坐标')
+        # return transferred_position
 
         if isinstance(masked_vertices, np.ndarray):
             print("确认有顶点组")
             self.transferred_position = undeformed_verts + (self.transferred_position - undeformed_verts) * masked_vertices
         return self.transferred_position
+        # return [transferred_position,self.transferred_position]
 
     def get_vertices_mask(self):
         """
@@ -702,6 +713,7 @@ class MeshDataTransfer:
     def transfer_vertex_position(self, as_shape_key=False):
         #
         transferred_positon = self.get_projected_vertices_on_source()
+        print('输出投射后顶点0:',self.get_projected_vertices_on_source())
         # shape_key_basis = ['Basis', 'basis', '基型']
         if as_shape_key:
             if self.sk_name==None:
@@ -710,10 +722,10 @@ class MeshDataTransfer:
         else:
             # print(self.thisobj.name)
 
-            # 有时候物体有形态键了，但是想传形状给形态键
+
             # if not hasattr(self.thisobj.mesh.shape_keys, 'key_blocks'):
             if hasattr(self.thisobj.mesh.shape_keys, 'key_blocks'):
-                # 有时候物体有形态键了，但是想传形状给激活形态键
+                # 有时候物体有形态键了，想传形状给激活形态键
                 # for i in shape_key_basis:
 
                 try:
@@ -726,17 +738,17 @@ class MeshDataTransfer:
 
 
             else:
-                # 没有形态键直接传
-                self.thisobj.set_verts_position(transferred_positon)
+                #想改变物体形状,不想添加形态键
+                self.thisobj.set_verts_position(co=transferred_positon)
 
                 #有时候有形态键，分传入basis和传入其他形态键两种情况
                 # for i in shape_key_basis:
-                sk_name=bpy.context.active_object.active_shape_key.name
-                try:
-                    # self.thisobj.mesh.shape_keys.key_blocks[i].data.foreach_set('co', transferred_positon.ravel())
-                    self.thisobj.mesh.shape_keys.key_blocks[sk_name].data.foreach_set('co', transferred_positon.ravel())
-                except:
-                    pass
+                # sk_name=bpy.context.active_object.active_shape_key.name
+                # try:
+                #     # self.thisobj.mesh.shape_keys.key_blocks[i].data.foreach_set('co', transferred_positon.ravel())
+                #     self.thisobj.mesh.shape_keys.key_blocks[sk_name].data.foreach_set('co', transferred_positon.ravel())
+                # except:
+                #     pass
 
         # 刷新视图
         bpy.ops.object.editmode_toggle()
@@ -745,7 +757,7 @@ class MeshDataTransfer:
         return 1
     def fix_mirror_transfer_vertex_position(self,as_shape_key=False):
 
-        transferred_positon = self.get_projected_vertices_on_source()
+        transferred_positon = self.get_projected_vertices_on_source()[1]
         # shape_key_basis = ['Basis', 'basis', '基型']
 
             # 有时候物体有形态键了
