@@ -72,10 +72,11 @@ class Cupcko_Panel(bpy.types.Panel):
         return (context.object is not None)
 
     bl_idname = "VIEW3D_PT_test_1"
-    bl_label = "Cupcko:反馈群536440291"
+    bl_label = "CupckoTool"
 
     def draw(self, context):
         layout = self.layout
+        layout.label(text="反馈群:536440291")
         box_4A26D = layout.box()
         box_4A26D.alert = False
         box_4A26D.enabled = True
