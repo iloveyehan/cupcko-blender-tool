@@ -29,7 +29,7 @@ from .cupcko_mesh_data_transfer import *
 bl_info = {
     "name": "cupcko",
     "author": "cupcko",
-    "version": (1, 0, 4),
+    "version": (1, 0, 5),
     "blender": (2, 93, 0),
     "location": "到处都是",
     "description": "快速编辑,镜像,整理自定义骨骼形状",
