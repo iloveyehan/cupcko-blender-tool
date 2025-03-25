@@ -14,7 +14,7 @@ from .cupcko_material_operators import *
 from .cupcko_vg_ops import *
 from . import flatten_uv
 from . import cupcko_camera_driver
-
+from . import edge_length
 from .cupcko_mesh_data_transfer import *
 
 # if sys.platform == 'win32': os.system('chcp 65001')
@@ -951,6 +951,7 @@ def register():
     from bpy.utils import register_class
     for c in classes:
         register_class(c)
+    edge_length.edge_length_register()
     bpy.types.TOPBAR_HT_upper_bar.append(VIEW3D_HT_Language.draw)
     bpy.types.DATA_PT_shape_keys.append(Cupcko_shape_keys_driver.draw)
     bpy.types.DATA_PT_modifiers.append(sna_add_to_data_pt_modifiers_E5089)
@@ -967,6 +968,7 @@ def unregister():
     from bpy.utils import unregister_class
     for c in reversed(classes):
         unregister_class(c)
+    edge_length.edge_length_unregister()
     bpy.types.TOPBAR_HT_upper_bar.remove(VIEW3D_HT_Language.draw)
     bpy.types.DATA_PT_shape_keys.remove(Cupcko_shape_keys_driver.draw)
     bpy.types.DATA_PT_modifiers.remove(sna_add_to_data_pt_modifiers_E5089)

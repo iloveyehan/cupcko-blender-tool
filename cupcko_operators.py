@@ -1,5 +1,6 @@
 import bpy
 import bmesh
+import re
 # from .mesh_data_transfer import MeshDataTransfer
 from .cupcko_mesh_data_transfer import *
 
@@ -259,60 +260,214 @@ class Cupcko_return_selected_obj(bpy.types.Operator):
             bpy.data.objects[obj.name].select_set(state=True)
         self.report({'INFO'}, '返回编辑模式顶点所属物体')
         return {'FINISHED'}
+
+sides = [
+    {"left": "_L_", "right": "_R_"},
+    {"left": "_l_", "right": "_r_"},
+    {"left": "_l", "right": "_r"},
+    {"left": "_L", "right": "_R"},
+    {"left": ".l", "right": ".r"},
+    {"left": ".L", "right": ".R"},
+]
+
+
+def determine_and_convert(vertex_group_name, LR=None):
+    '''参数：顶点组名，顶点组位置
+        只有顶点组名时，返回左右转换后的顶点组名，中间顶点组不变
+        传入顶点组位置时，返回 顶点组位置是否匹配
+        [True, last_match, replaced_string]'''
+    # 定义左右边的标识符及其转换规则
+
+    # 根据LR参数选择匹配左边还是右边的标识符，并准备替换的映射
+    pattern = ''
+    replace_map = {}
+    if LR == '-x':
+        pattern = "|".join([re.escape(side["left"]) for side in sides])
+        replace_map = {side["left"]: side["right"] for side in sides}
+    elif LR == '+x':
+        pattern = "|".join([re.escape(side["right"]) for side in sides])
+        replace_map = {side["right"]: side["left"] for side in sides}
+    elif LR == 'center':
+        # 创建正则表达式模式，将所有左右标识符组合成一个正则表达式
+        pattern = "|".join([re.escape(side["left"]) + "|" + re.escape(side["right"]) for side in sides])
+
+        # 使用正则表达式查找左右标识符
+        matches = re.findall(pattern, vertex_group_name)
+
+        # 如果没有找到任何匹配项，返回True；否则返回False
+        return [not bool(matches), None, vertex_group_name]
+    elif LR == None:
+        # 构建匹配左边标识符的正则表达式，并准备替换的映射
+
+        pattern = "|".join([re.escape(side["left"]) + "|" + re.escape(side["right"]) for side in sides])
+
+        replace_map = {**{side["left"]: side["right"] for side in sides},
+                       **{side["right"]: side["left"] for side in sides}}
+
+    # 查找所有匹配项
+    matches = re.findall(pattern, vertex_group_name)
+    if not matches:
+        return [False, None, vertex_group_name]
+
+    # 仅替换最后一个匹配项
+    last_match = matches[-1]
+    replaced_string = re.sub(re.escape(last_match), replace_map[last_match], vertex_group_name, count=1)
+
+    # 返回结果
+    return [True, last_match, replaced_string]
 class Cupcko_combine_selected_bone_weights(bpy.types.Operator):
-    '''多选骨骼，合并权重到激活骨骼，删除其他骨骼'''
+    """多选骨骼，合并权重到激活骨骼，删除其他骨骼（支持镜像处理）"""
     bl_idname = "cupcko.combine_selected_bone_weights"
     bl_label = "合并骨骼权重，删除其他骨骼"
     bl_options = {'REGISTER', 'UNDO'}
-
+    mirror: bpy.props.BoolProperty(
+        name="镜像处理",
+        description="对选中骨骼的对称骨骼执行相同操作",
+        default=False
+    )
     @classmethod
     def poll(cls, context):
-        if context.active_object is None:
-            return 0
-        return bpy.context.object.type=='ARMATURE'
-
+        obj = context.active_object
+        return obj and obj.type == 'ARMATURE'
     def execute(self, context):
-        armature = bpy.context.active_object
-        child_obj=armature.children
+        armature = context.active_object
+        active_bone = context.active_bone
+        child_objs = [obj for obj in armature.children if obj.type == 'MESH']
+        # 获取镜像骨骼名称
+        mirror_active_name = determine_and_convert(active_bone.name)[2]
+        mirror_active_bone = None
+        if self.mirror and mirror_active_name:
+            mirror_active_bone = armature.data.bones.get(mirror_active_name)
+        # 切换到姿态模式获取选中骨骼
         bpy.ops.object.mode_set(mode='POSE')
-        posebone=bpy.context.selected_pose_bones
-
-        active_bone=bpy.context.active_bone
-        #做权重
-        for obj in child_obj:
-            if obj.type=='MESH':
-                meshdata=MeshData(obj)
-                #传入骨骼名称
-                v_count = len(obj.data.vertices)
-                weights = np.zeros(v_count, dtype=np.float32)
-                weights.shape=(v_count, 1)
-                for b in posebone:
-                    print('weight',b.name,type(weights))
-                    if meshdata.get_vertex_group_weights(b.name) is not None:
-
-                        weights +=meshdata.get_vertex_group_weights(b.name)
-                    if b.name==active_bone.name:
-                        continue
-                    if meshdata.vertex_groups.get(b.name):
-                        obj.vertex_groups.remove(obj.vertex_groups[b.name])
-                #拿到最终权重，传入active bone
-                meshdata.set_vertex_group_weights(weights,active_bone.name)
-                meshdata.free_memory()
-        #删骨骼
-        bpy.ops.object.mode_set(mode='EDIT')
-        editbone = bpy.context.selected_editable_bones
-        for b in editbone:
-            if b.name==active_bone.name:
-                continue
-            bpy.context.object.data.edit_bones.remove(b)
-            # with bpy.context.temp_override(active_object=armature,selected_editable_bones=b,active_bone=b):
-            #     bpy.ops.armature.dissolve()
-
-        bpy.ops.object.mode_set(mode='POSE')
-
-        self.report({'INFO'}, '合并完成')
+        pose_bones = context.selected_pose_bones
+        # 处理所有子网格对象
+        for obj in child_objs:
+            mesh_data = MeshData(obj)
+            v_count = len(obj.data.vertices)
+            # 初始化权重数组
+            weights_active = np.zeros(v_count, dtype=np.float32)
+            weights_active.shape = (v_count, 1)
+            weights_mirror = np.zeros_like(weights_active) if mirror_active_bone else None
+            # 遍历所有选中骨骼
+            for pose_bone in pose_bones:
+                bone_name = pose_bone.name
+                # 处理原始骨骼权重
+                if (wgts := mesh_data.get_vertex_group_weights(bone_name)) is not None:
+                    weights_active += wgts
+                # 处理镜像骨骼权重
+                if self.mirror:
+                    if mirror_name := determine_and_convert(bone_name)[2]:
+                        if (mirror_wgts := mesh_data.get_vertex_group_weights(mirror_name)) is not None:
+                            weights_mirror += mirror_wgts
+            # 写入权重数据
+            mesh_data.set_vertex_group_weights(weights_active, active_bone.name)
+            if mirror_active_bone and weights_mirror is not None:
+                mesh_data.set_vertex_group_weights(weights_mirror, mirror_active_bone.name)
+            # 清理顶点组
+            self.cleanup_vertex_groups(obj, pose_bones, active_bone, mirror_active_bone)
+            mesh_data.free_memory()
+        # 删除骨骼
+        self.remove_bones(context, armature, active_bone, mirror_active_bone)
+        self.report({'INFO'}, '合并完成（镜像已启用）' if self.mirror else '合并完成')
         return {'FINISHED'}
+
+    def cleanup_vertex_groups(self, obj, pose_bones, active_bone, mirror_active_bone):
+        """清理原始和镜像顶点组"""
+        vg_names_to_keep = {active_bone.name}
+        if mirror_active_bone:
+            vg_names_to_keep.add(mirror_active_bone.name)
+        for bone in pose_bones:
+            # 删除原始顶点组
+            if bone.name in obj.vertex_groups and bone.name not in vg_names_to_keep:
+                obj.vertex_groups.remove(obj.vertex_groups[bone.name])
+
+            # 删除镜像顶点组
+            if self.mirror:
+                if mirror_name := determine_and_convert(bone.name)[2]:
+                    if mirror_name in obj.vertex_groups and mirror_name not in vg_names_to_keep:
+                        obj.vertex_groups.remove(obj.vertex_groups[mirror_name])
+
+    def remove_bones(self, context, armature, active_bone, mirror_active_bone):
+        """删除骨骼逻辑"""
+        bpy.ops.object.mode_set(mode='EDIT')
+        edit_bones = armature.data.edit_bones
+        # 收集需要删除的骨骼
+        to_remove = []
+        for bone in context.selected_editable_bones:
+            if bone.name == active_bone.name or \
+                    (mirror_active_bone and bone.name == mirror_active_bone.name):
+                continue
+
+            to_remove.append(bone)
+
+            # 添加镜像骨骼到删除列表
+            if self.mirror:
+                if mirror_name := determine_and_convert(bone.name)[2]:
+                    if mirror_name in edit_bones:
+                        to_remove.append(edit_bones[mirror_name])
+        # 去重并删除
+        seen = set()
+        for bone in to_remove:
+            if bone.name not in seen and bone.name in edit_bones:
+                seen.add(bone.name)
+                edit_bones.remove(bone)
+        bpy.ops.object.mode_set(mode='POSE')
+
+# class Cupcko_combine_selected_bone_weights(bpy.types.Operator):
+#     '''多选骨骼，合并权重到激活骨骼，删除其他骨骼'''
+#     bl_idname = "cupcko.combine_selected_bone_weights"
+#     bl_label = "合并骨骼权重，删除其他骨骼"
+#     bl_options = {'REGISTER', 'UNDO'}
 #
+#     @classmethod
+#     def poll(cls, context):
+#         if context.active_object is None:
+#             return 0
+#         return bpy.context.object.type=='ARMATURE'
+#
+#     def execute(self, context):
+#         armature = bpy.context.active_object
+#         child_obj=armature.children
+#         bpy.ops.object.mode_set(mode='POSE')
+#         posebone=bpy.context.selected_pose_bones
+#
+#         active_bone=bpy.context.active_bone
+#         #做权重
+#         for obj in child_obj:
+#             if obj.type=='MESH':
+#                 meshdata=MeshData(obj)
+#                 #传入骨骼名称
+#                 v_count = len(obj.data.vertices)
+#                 weights = np.zeros(v_count, dtype=np.float32)
+#                 weights.shape=(v_count, 1)
+#                 for b in posebone:
+#                     print('weight',b.name,type(weights))
+#                     if meshdata.get_vertex_group_weights(b.name) is not None:
+#
+#                         weights +=meshdata.get_vertex_group_weights(b.name)
+#                     if b.name==active_bone.name:
+#                         continue
+#                     if meshdata.vertex_groups.get(b.name):
+#                         obj.vertex_groups.remove(obj.vertex_groups[b.name])
+#                 #拿到最终权重，传入active bone
+#                 meshdata.set_vertex_group_weights(weights,active_bone.name)
+#                 meshdata.free_memory()
+#         #删骨骼
+#         bpy.ops.object.mode_set(mode='EDIT')
+#         editbone = bpy.context.selected_editable_bones
+#         for b in editbone:
+#             if b.name==active_bone.name:
+#                 continue
+#             bpy.context.object.data.edit_bones.remove(b)
+#             # with bpy.context.temp_override(active_object=armature,selected_editable_bones=b,active_bone=b):
+#             #     bpy.ops.armature.dissolve()
+#
+#         bpy.ops.object.mode_set(mode='POSE')
+#
+#         self.report({'INFO'}, '合并完成')
+#         return {'FINISHED'}
+# #
 #
 class SNA_OT_Hide_Empty(bpy.types.Operator):
     bl_idname = "sna.hide_empty"
