@@ -294,6 +294,8 @@ class VIEW3D_HT_Language(bpy.types.Header):
                     row1.operator(Cupcko_rotate_method_switch.bl_idname, text='当前:轨迹球')
                 else:
                     row1.operator(Cupcko_rotate_method_switch.bl_idname, text='当前:转盘')
+            row1.operator(Cupcko_Switch_High.bl_idname, text='高模')
+            row1.operator(Cupcko_Switch_Low.bl_idname, text='低模')
 
 # class Init_settings():
 #     def __init__(self):
@@ -478,8 +480,50 @@ class Cupcko_Language_switch(bpy.types.Operator):
         finally:
             context.preferences.edit.use_global_undo = use_global_undo
         return {'FINISHED'}
+class Cupcko_Switch_High(bpy.types.Operator):
+    bl_idname = "cup.switch_high"
+    bl_label = "高模"
+    bl_options = {'REGISTER', 'UNDO'}
 
+    @classmethod
+    def poll(cls, context):
 
+        return context.mode == 'OBJECT'
+
+    def execute(self, context):
+        # 遍历场景中的所有物体
+        for obj in context.scene.objects:
+            # 检查物体名称是否包含 "_high"
+            if "_high" in obj.name:
+                # 切换物体的可见性
+                if obj.hide:
+                    obj.hide_set(0)
+                else:
+                    obj.hide_set(1)
+
+        return {'FINISHED'}
+class Cupcko_Switch_Low(bpy.types.Operator):
+    bl_idname = "cup.switch_low"
+    bl_label = "低模"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+
+        return context.mode == 'OBJECT'
+
+    def execute(self, context):
+        # 遍历场景中的所有物体
+        for obj in context.scene.objects:
+            # 检查物体名称是否包含 "low"
+            if "_low" in obj.name:
+                # 切换物体的可见性
+                if obj.hide:
+                    obj.hide_set(0)
+                else:
+                    obj.hide_set(1)
+
+        return {'FINISHED'}
 class Cupcko_exit_edit_shape(bpy.types.Operator):
     bl_idname = "cup.exit_edit_shape"
     bl_label = "应用形状"
@@ -876,6 +920,8 @@ Cupcko_cs_group_orgnize,
 Cupcko_Language_switch,
 Cupcko_3button_mouse_switch,
 Cupcko_rotate_center_switch,
+Cupcko_Switch_High,
+Cupcko_Switch_Low,
 
 Cupcko_annotate_surface,
 Cupcko_rotate_method_switch,
