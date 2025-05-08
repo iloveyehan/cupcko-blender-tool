@@ -323,7 +323,7 @@ class Cupcko_combine_selected_bone_weights(bpy.types.Operator):
     mirror: bpy.props.BoolProperty(
         name="镜像处理",
         description="对选中骨骼的对称骨骼执行相同操作",
-        default=False
+        default=True
     )
     @classmethod
     def poll(cls, context):
@@ -334,13 +334,16 @@ class Cupcko_combine_selected_bone_weights(bpy.types.Operator):
         active_bone = context.active_bone
         child_objs = [obj for obj in armature.children if obj.type == 'MESH']
         # 获取镜像骨骼名称
-        mirror_active_name = determine_and_convert(active_bone.name)[2]
+        if self.mirror:
+            mirror_active_name = determine_and_convert(active_bone.name)[2]
         mirror_active_bone = None
         if self.mirror and mirror_active_name:
             mirror_active_bone = armature.data.bones.get(mirror_active_name)
         # 切换到姿态模式获取选中骨骼
         bpy.ops.object.mode_set(mode='POSE')
         pose_bones = context.selected_pose_bones
+        print('选中',context.selected_pose_bones)
+        print('选中1',context.selected_editable_bones)
         # 处理所有子网格对象
         for obj in child_objs:
             mesh_data = MeshData(obj)
@@ -367,7 +370,10 @@ class Cupcko_combine_selected_bone_weights(bpy.types.Operator):
             # 清理顶点组
             self.cleanup_vertex_groups(obj, pose_bones, active_bone, mirror_active_bone)
             mesh_data.free_memory()
+        print('选中2',context.selected_pose_bones)
+        print('选中2',context.selected_editable_bones)
         # 删除骨骼
+        print('mirror_active_bone',mirror_active_bone)
         self.remove_bones(context, armature, active_bone, mirror_active_bone)
         self.report({'INFO'}, '合并完成（镜像已启用）' if self.mirror else '合并完成')
         return {'FINISHED'}
@@ -390,28 +396,41 @@ class Cupcko_combine_selected_bone_weights(bpy.types.Operator):
 
     def remove_bones(self, context, armature, active_bone, mirror_active_bone):
         """删除骨骼逻辑"""
-        bpy.ops.object.mode_set(mode='EDIT')
+        # bpy.ops.object.mode_set(mode='EDIT')
+  
         edit_bones = armature.data.edit_bones
         # 收集需要删除的骨骼
         to_remove = []
-        for bone in context.selected_editable_bones:
+        for bone in context.selected_pose_bones:
+            print('选中的骨骼',bone.name)
             if bone.name == active_bone.name or \
                     (mirror_active_bone and bone.name == mirror_active_bone.name):
                 continue
 
-            to_remove.append(bone)
+            to_remove.append(bone.name)
 
             # 添加镜像骨骼到删除列表
+            print('self.mirror:',self.mirror)
             if self.mirror:
                 if mirror_name := determine_and_convert(bone.name)[2]:
-                    if mirror_name in edit_bones:
-                        to_remove.append(edit_bones[mirror_name])
+                    print(bone.name,mirror_name)
+                    # if mirror_name in edit_bones:
+                    to_remove.append(mirror_name)
+                    print(2,bone.name,mirror_name)
+                        
         # 去重并删除
+        print('to_remove')
+        for b in to_remove:
+            print(b)
+        bpy.ops.object.mode_set(mode='EDIT')
         seen = set()
-        for bone in to_remove:
-            if bone.name not in seen and bone.name in edit_bones:
-                seen.add(bone.name)
-                edit_bones.remove(bone)
+        for bname in to_remove:
+            if bname not in seen and bname in edit_bones:
+                seen.add(bname)
+                edit_bones.remove(edit_bones[bname])
+
+
+        # bpy.context.object.pose.use_mirror_x = mirror_mode_temp
         bpy.ops.object.mode_set(mode='POSE')
 
 # class Cupcko_combine_selected_bone_weights(bpy.types.Operator):

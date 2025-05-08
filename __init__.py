@@ -16,7 +16,7 @@ from . import flatten_uv
 from . import cupcko_camera_driver
 from . import edge_length
 from .cupcko_mesh_data_transfer import *
-
+from .cupcko_bone_ops import *
 # if sys.platform == 'win32': os.system('chcp 65001')
 
 # import importlib
@@ -948,9 +948,12 @@ Cupcko_vg_metarig_to_rig,
 Cupcko_vg_rig_to_metarig,
 Cupcko_vg_clear_unused,
 Cupcko_vg_remove_zero,
-
+Cupcko_vg_clean_vg,
+Cupcko_vg_clean_advanced,
+Cupcko_vg_remove_selected_wt,
 Cupcko_vg_mirror_weight,
 Cupcko_vg_symmetry_weight,
+SyncActiveBoneNameOperator,
 ]
 
 

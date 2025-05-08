@@ -1,6 +1,93 @@
+import math
 import bpy
+class Cupcko_vg_clean_vg(bpy.types.Operator):
+    """清理激活顶点组,移除0权重"""
 
+    bl_idname = "cupcko.vg_clean_vg"
+    bl_label = "清理激活顶点组,移除0权重"
+    bl_options = {'UNDO'}
 
+    @classmethod
+    def poll(cls, context):
+        return bpy.context.object is not None
+
+    def execute(self, context):
+        # 获取当前活动对象
+        obj = bpy.context.active_object
+        # 检查是否为网格对象
+        if not obj or obj.type != 'MESH':
+            raise Exception("请先选择一个网格物体")
+        # 获取当前激活的顶点组
+        vertex_group = obj.vertex_groups.active
+        if not vertex_group:
+            raise Exception("当前没有激活的顶点组")
+        # 存储需要移除的顶点索引
+        to_remove = []
+        # 遍历所有顶点
+        for vertex in obj.data.vertices:
+            # 获取该顶点在激活顶点组中的权重
+            weight = 0.0
+            for group in vertex.groups:
+                if group.group == vertex_group.index:
+                    weight = group.weight
+                    break
+
+            # 如果权重为0则标记移除
+            if weight <= 0.0:
+                to_remove.append(vertex.index)
+        # 执行移除操作
+        if to_remove:
+            vertex_group.remove(to_remove)
+            print(f"已从顶点组 '{vertex_group.name}' 中移除 {len(to_remove)} 个权重为0的顶点")
+        else:
+            print("当前顶点组中没有权重为0的顶点")
+        # 刷新视图
+        bpy.context.view_layer.update()
+        return {'FINISHED'}
+class Cupcko_vg_clean_advanced(bpy.types.Operator):
+    """清理所有顶点组中的非法权重（0、负值、NaN）"""
+    
+    bl_idname = "cupcko.vg_clean_advanced"
+    bl_label = "高级清理顶点组 (0/负值/NaN)"
+    bl_options = {'UNDO'}
+    @classmethod
+    def poll(cls, context):
+        return context.active_object and context.active_object.type == 'MESH'
+    def execute(self, context):
+        obj = context.active_object
+        report_buffer = []  # 用于存储清理报告
+        
+        # 优化：预先获取顶点组索引映射
+        vg_index_map = {vg.index: vg for vg in obj.vertex_groups}
+        
+        # 并行遍历顶点数据
+        for v in obj.data.vertices:
+            for group in v.groups:
+                vg = vg_index_map.get(group.group)
+                if not vg:
+                    continue
+                
+                weight = group.weight
+                # 检测非法权重条件
+                if math.isnan(weight) or weight <= 0.0:
+                    # 使用顶点组自身的remove方法
+                    vg.remove([v.index])
+                    report_buffer.append(
+                        f"顶点 {v.index} -> {vg.name}: "
+                        f"非法权重 { 'NaN' if math.isnan(weight) else f'{weight:.4f}'}"
+                    )
+        # 生成最终报告
+        if report_buffer:
+            final_report = (
+                f"清理完成，共发现 {len(report_buffer)} 个非法权重：\n" +
+                "\n".join(report_buffer[:10]) + 
+                ("\n......" if len(report_buffer)>10 else "")
+            )
+            self.report({'INFO'}, final_report)
+        else:
+            self.report({'INFO'}, "未发现需要清理的非法权重")
+        context.view_layer.update()
+        return {'FINISHED'}
 class Cupcko_vg_metarig_to_rig(bpy.types.Operator):
     """将顶点组转换为rigifiy类型"""
 
@@ -18,6 +105,22 @@ class Cupcko_vg_metarig_to_rig(bpy.types.Operator):
                 i.name = 'DEF-' + i.name
         return {'FINISHED'}
 
+class Cupcko_vg_remove_selected_wt(bpy.types.Operator):
+    """将选择的顶点从权重移除"""
+
+    bl_idname = "cupcko.vg_remove_selected_wt"
+    bl_label = "将选择的顶点从权重移除"
+    bl_options = {'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return bpy.context.object is not None
+
+    def execute(self, context):
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.object.vertex_group_remove_from()
+        bpy.ops.object.mode_set(mode='WEIGHT_PAINT')
+        return {'FINISHED'}
 
 class Cupcko_vg_rig_to_metarig(bpy.types.Operator):
     """将顶点组转换为metarig类型，去除def前缀"""
@@ -62,6 +165,10 @@ def sna_add_to_data_pt_vertex_groups_4A52F(self, context):
         op = row_CC1A6.operator('cupcko.vg_metarig_to_rigify', text='转rigify', icon_value=0, emboss=True,
                                 depress=False)
         op = row_CC1A6.operator('cupcko.vg_rigify_to_metarig', text='转metarig', icon_value=0, emboss=True,
+                                depress=False)
+        op = row_CC1A6.operator('cupcko.vg_clean_vg', text='清理0权重', icon_value=0, emboss=True,
+                                depress=False)
+        op = row_CC1A6.operator('cupcko.vg_clean_advanced', text='清理所有组0权重new', icon_value=0, emboss=True,
                                 depress=False)
 
 
