@@ -17,6 +17,7 @@ from . import cupcko_camera_driver
 from . import edge_length
 from .cupcko_mesh_data_transfer import *
 from .cupcko_bone_ops import *
+from .update import CheckUpdateOperator
 # if sys.platform == 'win32': os.system('chcp 65001')
 
 # import importlib
@@ -61,7 +62,8 @@ class ExampleAddonPreferences(AddonPreferences):
         row.prop(self, "surface_paint_switch", toggle=True)
         row.prop(self, "emulate_3_button_mouse", toggle=True)
         row.prop(self, "sculpt_rotate_switch", toggle=True)
-
+        row2 = layout.row(align=True)
+        row2.operator("cupcko.check_update", text="检查更新")
 
 class Cupcko_Panel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
@@ -954,6 +956,7 @@ Cupcko_vg_remove_selected_wt,
 Cupcko_vg_mirror_weight,
 Cupcko_vg_symmetry_weight,
 SyncActiveBoneNameOperator,
+CheckUpdateOperator,
 ]
 
 
