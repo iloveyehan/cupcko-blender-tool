@@ -1,6 +1,6 @@
 import json, bpy, urllib.request
 import zipfile, os, tempfile
-
+import importlib
 def download_and_install(download_url):
     tmp = tempfile.mkdtemp()
     zip_path = os.path.join(tmp, "addon.zip")
@@ -17,13 +17,15 @@ def download_and_install(download_url):
         shutil.rmtree(target)
     shutil.move(os.path.join(tmp, addon_name), target)
 def get_remote_version():
-    url = "https://raw.githubusercontent.com/你的仓库/main/version.json"
+    url = "https://raw.githubusercontent.com/iloveyehan/cupcko-blender-tool/refs/heads/main/version.json"
     with urllib.request.urlopen(url) as resp:
         data = json.load(resp)
     return data  # 返回 dict，包含 version、download_url 等
 
 def get_local_version():
-    return bpy.context.preferences.addons[__name__].preferences.version  # 假设在插件偏好里存了 version
+    addon_module = importlib.import_module('cupcko-blender-tool')
+    version = addon_module.bl_info.get("version", (0, 0, 0))
+    return version
 class CheckUpdateOperator(bpy.types.Operator):
     bl_idname = "cupcko.check_update"
     bl_label = "检查更新"
@@ -31,9 +33,10 @@ class CheckUpdateOperator(bpy.types.Operator):
     def execute(self, context):
         remote = get_remote_version()
         local = get_local_version()
+        print(remote["version"],local,remote["version"]==local)
         if remote["version"] != local:
             self.report({'INFO'}, f"检测到新版本 {remote['version']}，开始下载")
-            download_and_install(remote["download_url"])
+            # download_and_install(remote["download_url"])
             self.report({'INFO'}, "插件已更新，请重启 Blender")
         else:
             self.report({'INFO'}, "已是最新版本")
