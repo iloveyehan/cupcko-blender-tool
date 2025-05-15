@@ -1,6 +1,6 @@
 {
-    "version": "(1,0,5)",
-    "download_url": "https://github.com/iloveyehan/cupcko-blender-tool/archive/refs/tags/v1.05.zip",
+    "version": "(1,0,6)",
+    "download_url": "https://github.com/iloveyehan/cupcko-blender-tool/archive/refs/tags/v1.06.zip",
     "changelog": "修复了自动更新的 bug"
   }
   
